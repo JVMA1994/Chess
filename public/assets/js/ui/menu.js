@@ -18,7 +18,7 @@ class MainMenu extends Menu {
 
     draw() {
         CTX.fillStyle = "#222";
-        CTX.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+        CTX.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
         CTX.fillStyle = "white";
         CTX.font = "48px Arial";

@@ -39,4 +39,39 @@ class Board{
         }
     }
 
+    isLegalMove(piece, targetRow, targetCol) {
+        const moves = piece.getPseudoLegalMoves(this);
+
+        // 1. Is this move even pseudo-legal?
+        return moves.find(
+            m => m.row === targetRow && m.col === targetCol
+        );
+    }
+
+    makeMove(move) {
+        const piece = this.boardArr[move.fromRow][move.fromCol];
+
+        move.captured = this.boardArr[move.toRow][move.toCol];
+
+        this.boardArr[move.fromRow][move.fromCol] = null;
+        this.boardArr[move.toRow][move.toCol] = piece;
+
+        piece.row = move.toRow;
+        piece.col = move.toCol;
+        piece.hasMoved = true;
+        piece.drag = false;
+    }
+
+    undoMove(move) {
+        const piece = this.boardArr[move.toRow][move.toCol];
+
+        this.boardArr[move.toRow][move.toCol] = move.captured;
+        this.boardArr[move.fromRow][move.fromCol] = piece;
+
+        piece.row = move.fromRow;
+        piece.col = move.fromCol;
+        piece.drag = false;
+    }
+
+
 }

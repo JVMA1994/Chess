@@ -8,89 +8,396 @@ class Piece {
         this.drag = false;
     }
 
-    getPossibleMoves(board) {
-        return [];
+    isValidMove(board, targetRow, targetCol) {
+        return this.isInsideBoard(targetRow, targetCol);
+    }
+
+    getPseudoLegalMoves(board) {
+
     }
 
     getX() {
-        return this.col * 80;
+        return BOARD_X + this.col * SQUARE_SIZE;
     }
 
     getY() {
-        return this.row * 80;
+        return BOARD_Y + this.row * SQUARE_SIZE;
     }
 
-    isMovable(){
-
+    isInsideBoard(row, col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
 }
 
-class WhiteKing extends Piece {
+class King extends Piece {
+    constructor(img, color, row, col) {
+        super(img, color, row, col);
+    }
+
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+        if (board.boardArr[targetRow][targetCol] === null ||
+            board.boardArr[targetRow][targetCol].color !== this.color) {
+            return true;
+        }
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[0, -1], [0, 1], [1, 0], [-1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                let r = this.row;
+                let c = this.col;
+                if (this.isValidMove(board, r + dir[0], c + dir[1])) {
+                    r += dir[0];
+                    c += dir[1];
+                    moves.push({
+                        row: r,
+                        col: c
+                    });
+                }
+            });
+        return moves;
+    }
+}
+
+class WhiteKing extends King {
     constructor(img) {
-        super(img, "white", 7, 4);
+        super(img, PlayerColor.WHITE, 7, 4);
     }
 }
 
-class BlackKing extends Piece {
+class BlackKing extends King {
     constructor(img) {
-        super(img, "black", 0, 4);
+        super(img, PlayerColor.BLACK, 0, 4);
     }
 }
 
-class WhiteQueen extends Piece {
+class Queen extends Piece {
+    constructor(img, color, row, col) {
+        super(img, color, row, col);
+    }
+
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+        if (board.boardArr[targetRow][targetCol] === null ||
+            board.boardArr[targetRow][targetCol].color !== this.color) {
+            return true;
+        }
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[0, -1], [0, 1], [1, 0], [-1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                let r = this.row;
+                let c = this.col;
+                while (this.isValidMove(board, r + dir[0], c + dir[1])) {
+                    r += dir[0];
+                    c += dir[1];
+                    moves.push({
+                        row: r,
+                        col: c
+                    });
+                    if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
+                        break;
+                }
+            });
+        return moves;
+    }
+}
+
+class WhiteQueen extends Queen {
     constructor(img) {
-        super(img, "white", 7, 3);
+        super(img, PlayerColor.WHITE, 7, 3);
     }
 }
 
-class BlackQueen extends Piece {
+class BlackQueen extends Queen {
     constructor(img) {
-        super(img, "black", 0, 3);
+        super(img, PlayerColor.BLACK, 0, 3);
     }
 }
 
-class WhiteRook extends Piece {
+class Rook extends Piece {
+    constructor(img, color, row, col) {
+        super(img, color, row, col);
+    }
+
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+        if (board.boardArr[targetRow][targetCol] === null ||
+            board.boardArr[targetRow][targetCol].color !== this.color) {
+            return true;
+        }
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[0, -1], [0, 1], [1, 0], [-1, 0]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                let r = this.row;
+                let c = this.col;
+                while (this.isValidMove(board, r + dir[0], c + dir[1])) {
+                    r += dir[0];
+                    c += dir[1];
+                    moves.push({
+                        row: r,
+                        col: c
+                    });
+                    if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
+                        break;
+                }
+            });
+        return moves;
+    }
+
+}
+
+class WhiteRook extends Rook {
     constructor(img, col) {
-        super(img, "white", 7, col); // col: 0 or 7
+        super(img, PlayerColor.WHITE, 7, col); // col: 0 or 7
     }
 }
 
-class BlackRook extends Piece {
+class BlackRook extends Rook {
     constructor(img, col) {
-        super(img, "black", 0, col); // col: 0 or 7
+        super(img, PlayerColor.BLACK, 0, col); // col: 0 or 7
     }
 }
 
-class WhiteBishop extends Piece {
-    constructor(img, col) {
-        super(img, "white", 7, col); // col: 2 or 5
+class Bishop extends Piece {
+    constructor(img, color, row, col) {
+        super(img, color, row, col);
+    }
+
+    /**
+     * Validates white knight movement.
+     */
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+        if (board.boardArr[targetRow][targetCol] === null ||
+            board.boardArr[targetRow][targetCol].color !== this.color) {
+            return true;
+        }
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                let r = this.row;
+                let c = this.col;
+                while (this.isValidMove(board, r + dir[0], c + dir[1])) {
+                    r += dir[0];
+                    c += dir[1];
+                    moves.push({
+                        row: r,
+                        col: c
+                    });
+                    if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
+                        break;
+                }
+            });
+        return moves;
     }
 }
 
-class BlackBishop extends Piece {
+class WhiteBishop extends Bishop {
     constructor(img, col) {
-        super(img, "black", 0, col);
+        super(img, PlayerColor.WHITE, 7, col); // col: 2 or 5
     }
+
+
 }
-class WhiteKnight extends Piece {
+
+class BlackBishop extends Bishop {
     constructor(img, col) {
-        super(img, "white", 7, col); // col: 1 or 6
+        super(img, PlayerColor.BLACK, 0, col);
     }
 }
 
-class BlackKnight extends Piece {
+class Knight extends Piece {
+    constructor(img, color, row, col) {
+        super(img, color, row, col);
+    }
+
+    /**
+     * Validates white knight movement.
+     */
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+        if (board.boardArr[targetRow][targetCol] === null ||
+            board.boardArr[targetRow][targetCol].color !== this.color) {
+            return true;
+        }
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[-2, 1], [-2, -1], [2, 1], [2, -1], [1, 2], [-1, 2], [1, -2], [-1, -2]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
+                    moves.push({
+                        row: this.row + dir[0],
+                        col: this.col + dir[1]
+                    });
+                }
+            });
+        return moves;
+    }
+
+}
+
+class WhiteKnight extends Knight {
     constructor(img, col) {
-        super(img, "black", 0, col); // col: 1 or 6
+        super(img, PlayerColor.WHITE, 7, col); // col: 1 or 6
     }
 }
+
+class BlackKnight extends Knight {
+    constructor(img, col) {
+        super(img, PlayerColor.BLACK, 0, col); // col: 1 or 6
+    }
+}
+
 class WhitePawn extends Piece {
     constructor(img, col) {
-        super(img, "white", 6, col); // col: 0–7
+        super(img, PlayerColor.WHITE, 6, col); // col: 0–7
+    }
+
+    /**
+     * Validates white pawn movement.
+     * Excludes: check validation, en passant, promotion.
+     */
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) {
+            return false;
+        }
+
+        const rowDiff = targetRow - this.row;
+        const colDiff = Math.abs(targetCol - this.col);
+
+        // 1. Forward move (no capture)
+        if (colDiff === 0) {
+            // One square forward
+            if (rowDiff === -1 && board.boardArr[targetRow][targetCol] === null) {
+                return true;
+            }
+
+            // Two squares forward (first move only)
+            if (
+                !this.hasMoved &&
+                rowDiff === -2 &&
+                board.boardArr[this.row - 1][this.col] === null &&
+                board.boardArr[targetRow][targetCol] === null
+            ) {
+                return true;
+            }
+        }
+
+        // 2. Diagonal capture
+        if (
+            rowDiff === -1 &&
+            colDiff === 1 &&
+            board.boardArr[targetRow][targetCol] !== null &&
+            board.boardArr[targetRow][targetCol].color !== this.color
+        ) {
+            return true;
+        }
+        //TODO: En passant
+        //TODO: promotion
+        return false;
+    }
+
+    getPseudoLegalMoves(board) {
+        let direction = [[-1, 0], [-2, 0], [-1, -1], [-1, 1]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
+                    moves.push({
+                        row: this.row + dir[0],
+                        col: this.col + dir[1]
+                    });
+                }
+            });
+        return moves;
     }
 }
 
 class BlackPawn extends Piece {
     constructor(img, col) {
-        super(img, "black", 1, col); // col: 0–7
+        super(img, PlayerColor.BLACK, 1, col); // col: 0–7
+    }
+
+    /**
+     * Validates black pawn movement.
+     * Excludes: check validation, en passant, promotion.
+     */
+    isValidMove(board, targetRow, targetCol) {
+        if (!super.isValidMove(board, targetRow, targetCol)) return false;
+
+        const rowDiff = targetRow - this.row;
+        const colDiff = Math.abs(targetCol - this.col);
+
+        // 1. Forward move (no capture)
+        if (colDiff === 0) {
+            // One square forward
+            if (rowDiff === 1 && board.boardArr[targetRow][targetCol] === null) {
+                return true;
+            }
+
+            // Two squares forward (first move only)
+            if (
+                !this.hasMoved &&
+                rowDiff === 2 &&
+                board.boardArr[this.row + 1][this.col] === null &&
+                board.boardArr[targetRow][targetCol] === null
+            ) {
+                return true;
+            }
+        }
+
+        // 2. Diagonal capture
+        if (
+            rowDiff === 1 &&
+            colDiff === 1 &&
+            board.boardArr[targetRow][targetCol] !== null &&
+            board.boardArr[targetRow][targetCol].color !== this.color
+        ) {
+            return true;
+        }
+        //TODO: En passant
+        //TODO: promotion
+        return false;
+    }
+
+
+    getPseudoLegalMoves(board) {
+        let direction = [[1, 0], [2, 0], [1, -1], [1, 1]];
+        let moves = [];
+        direction
+            .forEach(dir => {
+                if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
+                    moves.push({
+                        row: this.row + dir[0],
+                        col: this.col + dir[1]
+                    });
+                }
+            });
+        return moves;
     }
 }
+
+
