@@ -121,35 +121,54 @@ class Game extends EventEmitter {
     handleMouseUp(e) {
         if (!this.draggedPiece) return;
 
-        const {row, col} = this.#getBoardCoordinatesFromEvent(e);
         const piece = this.draggedPiece;
+        const {row, col} = this.#getBoardCoordinatesFromEvent(e);
 
+        // Handle drops outside the board
         if (!this.#isInsideBoard(row, col)) {
-            this.#clearDragState(piece);
-            this.renderer.drawBoard(this.board);
+            this.#resetPiecePosition(piece);
             return;
         }
 
         const move = new Move(piece.row, piece.col, row, col);
 
+        // Attempt to make the move
         if (this.board.isLegalMove(piece, move)) {
-            this.board.makeMove(move);
-            let gameState = this.board.evaluateGameState(this.#getOpponentColor(piece.color));
-            if(GameState.CONTINUE === gameState){
-                this.switchTurn();
-            }else{
-                this.phase = gameState;
-                this.activeMenu = this.resetMenu;
-                this.inputManager.deactivateGameControllers();
-                this.activeMenu.draw();
-                this.inputManager.activateMenuControllers();
-            }
+            this.#executeLegalMove(move, piece);
+        } else {
+            this.#resetPiecePosition(piece);
         }
+    }
+
+    #executeLegalMove(move, piece) {
+        this.board.makeMove(move);
+        this.#resetPiecePosition(piece);
+
+        const gameState = this.board.evaluateGameState(
+            this.#getOpponentColor(piece.color)
+        );
+
+        if (gameState === GameState.CONTINUE) {
+            this.switchTurn();
+        } else {
+            this.#handleGameEnd(gameState);
+        }
+    }
+
+    #handleGameEnd(gameState) {
+        this.phase = gameState;
+        this.activeMenu = this.resetMenu;
+        this.inputManager.deactivateGameControllers();
+        this.activeMenu.draw();
+        this.inputManager.activateMenuControllers();
+    }
+
+    #resetPiecePosition(piece) {
         this.#clearDragState(piece);
         this.renderer.drawBoard(this.board);
     }
 
-    #getOpponentColor(color){
+    #getOpponentColor(color) {
         return PlayerColor.WHITE === color ? PlayerColor.BLACK : PlayerColor.WHITE;
     }
 
@@ -167,7 +186,7 @@ class Game extends EventEmitter {
         };
     }
 
-    #clearDragState(piece){
+    #clearDragState(piece) {
         piece.drag = false;
         this.draggedPiece = null;
     }

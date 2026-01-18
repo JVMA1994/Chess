@@ -104,6 +104,10 @@ class ResetMenu extends Menu {
         CTX.fillStyle = "rgba(0, 0, 0, 0.6)";
         CTX.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
+        this.#drawModal();
+    }
+
+    #drawModal(){
         // Modal box
         const boxW = 420;
         const boxH = 240;
@@ -154,7 +158,7 @@ class ResetMenu extends Menu {
                 this.hoveredButton = btn;
             }
         }
-        this.draw();
+        this.#drawModal();
     }
 
     handleClick() {
