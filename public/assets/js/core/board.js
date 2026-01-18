@@ -1,12 +1,23 @@
 class Board{
     constructor() {
         this.boardArr = Array.from({ length: 8 }, () => Array(8).fill(null));
-        this.pieces = []
+        this.blackPieces = []
+        this.whitePieces = []
+        this.blackKing = null
+        this.whiteKing = null
     }
 
     placePiece(piece) {
-        this.pieces.push(piece);
+        if(PlayerColor.WHITE === piece.color){
+            this.whitePieces.push(piece);
+        }else{
+            this.blackPieces.push(piece);
+        }
+
         this.boardArr[piece.row][piece.col] = piece;
+
+        if (piece instanceof WhiteKing) this.whiteKing = piece
+        if (piece instanceof BlackKing) this.blackKing = piece
     }
 
     initializeBoard(images) {
@@ -39,13 +50,77 @@ class Board{
         }
     }
 
-    isLegalMove(piece, targetRow, targetCol) {
+    isLegalMove(piece, move) {
         const moves = piece.getPseudoLegalMoves(this);
 
         // 1. Is this move even pseudo-legal?
-        return moves.find(
-            m => m.row === targetRow && m.col === targetCol
+        let validPseudoMoves = moves.find(
+            m => m.row === move.toRow && m.col === move.toCol
         );
+
+        if(!validPseudoMoves)
+            return false;
+
+        this.makeMove(move);
+
+        if(this.isKingInCheck(piece.color)){
+            this.undoMove(move);
+            return false;
+        }
+
+        this.undoMove(move);
+        return true;
+    }
+
+    getLegalMoves(color){
+        let legalMoves = [];
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                let piece = this.boardArr[row][col];
+                if(!piece || piece.color !== color)
+                    continue;
+
+                const moves = piece.getPseudoLegalMoves(this);
+
+                for(const move of moves){
+                    const mv = new Move(piece.row, piece.col, move.row, move.col);
+                    this.makeMove(mv);
+
+                    if(!this.isKingInCheck(color)){
+                        legalMoves.push(mv);
+                    }
+
+                    this.undoMove(mv);
+                }
+            }
+        }
+        return legalMoves;
+    }
+
+    evaluateGameState(color){
+        console.log(color);
+        const isKingInCheck = this.isKingInCheck(color);
+        let legalMoves = this.getLegalMoves(color);
+        if(this.#isStaleMate(isKingInCheck, legalMoves)){
+            return GameState.STALEMATE;
+        }
+
+        if(this.#isCheckMate(isKingInCheck, legalMoves)){
+            return PlayerColor.WHITE === color ? GameState.CHECKMATE_BLACK_WINS : GameState.CHECKMATE_WHITE_WINS;
+        }
+        return GameState.CONTINUE;
+    }
+
+    #isStaleMate(isKingInCheck, legalMoves){
+        if(isKingInCheck)
+            return false;
+        return legalMoves.length === 0;
+    }
+
+    #isCheckMate(isKingInCheck, legalMoves) {
+        if(!isKingInCheck)
+            return false;
+        return legalMoves.length === 0;
     }
 
     makeMove(move) {
@@ -58,8 +133,8 @@ class Board{
 
         piece.row = move.toRow;
         piece.col = move.toCol;
+        move.prevHasMoved = piece.hasMoved
         piece.hasMoved = true;
-        piece.drag = false;
     }
 
     undoMove(move) {
@@ -70,7 +145,32 @@ class Board{
 
         piece.row = move.fromRow;
         piece.col = move.fromCol;
-        piece.drag = false;
+        piece.hasMoved = move.prevHasMoved
+    }
+
+    isKingInCheck(color){
+        const king = color === PlayerColor.WHITE ? this.whiteKing : this.blackKing;
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.boardArr[row][col];
+                if (!piece || piece.color === color) continue;
+
+                const moves = piece.getPseudoLegalMoves(this);
+
+                for (const move of moves) {
+                    // Pawn special-case: only diagonals attack
+                    if (piece instanceof WhitePawn || piece instanceof BlackPawn) {
+                        if (move.col === piece.col) continue;
+                    }
+
+                    if (move.row === king.row && move.col === king.col) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
 

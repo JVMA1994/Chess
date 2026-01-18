@@ -4,6 +4,8 @@ class Move {
     this.fromCol = fromCol;
     this.toRow = toRow;
     this.toCol = toCol;
+    this.piece = null;
     this.captured = null;
+    this.prevHasMoved = null;
   }
 }

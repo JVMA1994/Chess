@@ -49,21 +49,22 @@ class Game extends EventEmitter {
     constructor(renderer, assets) {
         super();
         this.mainMenu = new MainMenu(this);
+        this.resetMenu = new ResetMenu(this);
         this.activeMenu = this.mainMenu;
         this.inputManager = new InputManager(this);
-        this.board = new Board();
         this.assets = assets;
         this.renderer = renderer;
         this.phase = GameState.NOT_STARTED;
     }
 
     start() {
-        this.inputManager.activateMainMenuControllers();
+        this.inputManager.activateMenuControllers();
         this.activeMenu.draw();
     }
 
     startNewGame() {
-        this.inputManager.deactivateMainMenuControllers();
+        this.board = new Board();
+        this.inputManager.deactivateMenuControllers();
         this.board.initializeBoard(this.assets);
         this.renderer.drawBoard(this.board);
         this.inputManager.activateGameControllers();
@@ -75,7 +76,8 @@ class Game extends EventEmitter {
     }
 
     isGameOver() {
-
+        this.board.isCheckMate()
+        this.board.isStaleMate();
     }
 
     /**
@@ -86,7 +88,8 @@ class Game extends EventEmitter {
      */
     handleMouseDown(e) {
         const {mx, my} = this.#getMousePosition(e);
-        const piece = this.#getPieceAt(mx, my);
+        const {row, col} = this.#getBoardCoordinatesFromXY(mx, my);
+        const piece = this.board.boardArr[row][col];
 
         if (!piece || !this.#isPlayersTurn(piece)) return;
 
@@ -118,37 +121,36 @@ class Game extends EventEmitter {
     handleMouseUp(e) {
         if (!this.draggedPiece) return;
 
-        const {row, col} = this.#getBoardCoordinates(e);
+        const {row, col} = this.#getBoardCoordinatesFromEvent(e);
         const piece = this.draggedPiece;
 
         if (!this.#isInsideBoard(row, col)) {
-            piece.drag = false;
-            this.draggedPiece = null;
+            this.#clearDragState(piece);
             this.renderer.drawBoard(this.board);
             return;
         }
 
         const move = new Move(piece.row, piece.col, row, col);
 
-        if (this.board.isLegalMove(piece, row, col)) {
-            // 2. Try the move
+        if (this.board.isLegalMove(piece, move)) {
             this.board.makeMove(move);
-            this.draggedPiece = null;
-
-            // 3. Check king safety
-            // const inCheck = this.isKingInCheck(piece.color);
-
-            // 4. Undo
-            // if(inCheck)
-            //     this.undoMove(move);
-
-            this.switchTurn();
-        }else{
-            piece.drag = false;
-            this.draggedPiece = null;
+            let gameState = this.board.evaluateGameState(this.#getOpponentColor(piece.color));
+            if(GameState.CONTINUE === gameState){
+                this.switchTurn();
+            }else{
+                this.phase = gameState;
+                this.activeMenu = this.resetMenu;
+                this.inputManager.deactivateGameControllers();
+                this.activeMenu.draw();
+                this.inputManager.activateMenuControllers();
+            }
         }
-
+        this.#clearDragState(piece);
         this.renderer.drawBoard(this.board);
+    }
+
+    #getOpponentColor(color){
+        return PlayerColor.WHITE === color ? PlayerColor.BLACK : PlayerColor.WHITE;
     }
 
     /**
@@ -165,13 +167,18 @@ class Game extends EventEmitter {
         };
     }
 
+    #clearDragState(piece){
+        piece.drag = false;
+        this.draggedPiece = null;
+    }
+
     /**
      * Converts mouse position to board coordinates.
      *
      * @param {MouseEvent} e
      * @returns {{row: number, col: number}}
      */
-    #getBoardCoordinates(e) {
+    #getBoardCoordinatesFromEvent(e) {
         const {mx, my} = this.#getMousePosition(e);
         return {
             col: Math.floor((mx - BOARD_X) / SQUARE_SIZE),
@@ -179,20 +186,11 @@ class Game extends EventEmitter {
         };
     }
 
-    /**
-     * Returns the piece at the given pixel coordinates.
-     *
-     * @param {number} mx
-     * @param {number} my
-     * @returns {Piece|null}
-     */
-    #getPieceAt(mx, my) {
-        return this.board.pieces.find(piece =>
-            mx >= piece.getX() &&
-            mx <= piece.getX() + SQUARE_SIZE &&
-            my >= piece.getY() &&
-            my <= piece.getY() + SQUARE_SIZE
-        ) || null;
+    #getBoardCoordinatesFromXY(mx, my) {
+        return {
+            col: Math.floor((mx - BOARD_X) / SQUARE_SIZE),
+            row: Math.floor((my - BOARD_Y) / SQUARE_SIZE)
+        };
     }
 
     /**

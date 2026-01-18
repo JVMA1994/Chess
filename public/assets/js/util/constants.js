@@ -43,11 +43,17 @@ const GameState = Object.freeze({
 
     // Special states
     PAUSED: 'PAUSED',
+    CONTINUE: 'CONTINUE',
     RESIGNED_WHITE: 'RESIGNED_WHITE',
     RESIGNED_BLACK: 'RESIGNED_BLACK',
     ABANDONED: 'ABANDONED',
     TIMEOUT_WHITE: 'TIMEOUT_WHITE',
     TIMEOUT_BLACK: 'TIMEOUT_BLACK'
 });
-
+const UserMessage = Object.freeze({
+    CHECKMATE_WHITE_WINS: 'Checkmate: White wins',
+    CHECKMATE_BLACK_WINS: 'Checkmate: Black wins',
+    STALEMATE: 'Stalemate',
+    PAUSED: 'Game Paused',
+})
 
