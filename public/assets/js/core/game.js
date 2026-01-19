@@ -96,7 +96,10 @@ class Game extends EventEmitter {
         this.draggedPiece = piece;
         piece.drag = true;
 
-        this.#renderDraggingPiece(mx, my);
+        const legalMoves = this.board.getLegalMovesOfPiece(this.draggedPiece);
+        this.board.cacheLegalMoves(this.draggedPiece, legalMoves);
+
+        this.#renderDraggingPiece(mx, my, legalMoves);
     }
 
     /**
@@ -109,7 +112,10 @@ class Game extends EventEmitter {
         if (!this.draggedPiece) return;
 
         const {mx, my} = this.#getMousePosition(e);
-        this.#renderDraggingPiece(mx, my);
+
+        const legalMoves = this.board.getCachedMoves(this.draggedPiece);
+
+        this.#renderDraggingPiece(mx, my, legalMoves);
     }
 
     /**
@@ -143,7 +149,10 @@ class Game extends EventEmitter {
     #executeLegalMove(move, piece) {
         this.board.makeMove(move);
         this.#resetPiecePosition(piece);
+        this.board.evictLegalMovesCache();
 
+        // evaluate game state using opponent's color to check whether the opponent's king is in check allowing for checkmate, or
+        // stalemate
         const gameState = this.board.evaluateGameState(
             this.#getOpponentColor(piece.color)
         );
@@ -241,10 +250,11 @@ class Game extends EventEmitter {
      *
      * @param {number} mx
      * @param {number} my
+     * @param {array} validMoves
      */
-    #renderDraggingPiece(mx, my) {
+    #renderDraggingPiece(mx, my, validMoves) {
         this.renderer.drawBoard(this.board);
-        this.renderer.drawValidPositions(this.board, this.draggedPiece)
+        this.renderer.drawValidPositions(this.board, validMoves)
         CTX.drawImage(
             this.draggedPiece.image,
             mx - PIECE_SIZE / 2,

@@ -5,6 +5,7 @@ class Board{
         this.whitePieces = []
         this.blackKing = null
         this.whiteKing = null
+        this.legalMovesForAPieceCache = new Map();
     }
 
     placePiece(piece) {
@@ -51,27 +52,38 @@ class Board{
     }
 
     isLegalMove(piece, move) {
-        const moves = piece.getPseudoLegalMoves(this);
+        const cachedMoves = this.legalMovesForAPieceCache?.get(piece);
+        const moves = cachedMoves ?? this.getLegalMovesOfPiece(piece);
 
         // 1. Is this move even pseudo-legal?
-        let validPseudoMoves = moves.find(
-            m => m.row === move.toRow && m.col === move.toCol
+        return moves.some(m =>
+            m.toRow === move.toRow &&
+            m.toCol === move.toCol
         );
-
-        if(!validPseudoMoves)
-            return false;
-
-        this.makeMove(move);
-
-        if(this.isKingInCheck(piece.color)){
-            this.undoMove(move);
-            return false;
-        }
-
-        this.undoMove(move);
-        return true;
     }
 
+    getLegalMovesOfPiece(piece){
+        let legalMoves = [];
+        const moves = piece.getPseudoLegalMoves(this);
+
+        for(const move of moves){
+            const mv = new Move(piece.row, piece.col, move.row, move.col);
+            this.makeMove(mv);
+
+            if(!this.isKingInCheck(piece.color)){
+                legalMoves.push(mv);
+            }
+
+            this.undoMove(mv);
+        }
+        return legalMoves;
+    }
+
+    /**
+     * Get legal moves of all the pieces that are of @param color
+     * @param color piece's color whose legal moves are to be calculated
+     * @returns {*[]}
+     */
     getLegalMoves(color){
         let legalMoves = [];
         for (let row = 0; row < 8; row++) {
@@ -98,7 +110,6 @@ class Board{
     }
 
     evaluateGameState(color){
-        console.log(color);
         const isKingInCheck = this.isKingInCheck(color);
         let legalMoves = this.getLegalMoves(color);
         if(this.#isStaleMate(isKingInCheck, legalMoves)){
@@ -173,5 +184,17 @@ class Board{
         return false;
     }
 
+
+    cacheLegalMoves(draggedPiece, legalMoves) {
+        this.legalMovesForAPieceCache.set(draggedPiece, legalMoves);
+    }
+
+    evictLegalMovesCache(){
+        this.legalMovesForAPieceCache.clear();
+    }
+
+    getCachedMoves(piece){
+        return this.legalMovesForAPieceCache.get(piece);
+    }
 
 }

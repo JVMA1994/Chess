@@ -18,13 +18,12 @@ class Renderer{
         }
     }
 
-    drawValidPositions(board, draggedPiece){
-        let validMoves = draggedPiece.getPseudoLegalMoves(board);
+    drawValidPositions(board, validMoves){
         if(validMoves){
             validMoves.forEach(coord => {
                 CTX.beginPath();
                 CTX.fillStyle = 'green';
-                CTX.arc(BOARD_X + coord.col * SQUARE_SIZE + SQUARE_SIZE/2, BOARD_Y + coord.row * SQUARE_SIZE + SQUARE_SIZE/2, 10, 0, Math.PI * 2);
+                CTX.arc(BOARD_X + coord.toCol * SQUARE_SIZE + SQUARE_SIZE/2, BOARD_Y + coord.toRow * SQUARE_SIZE + SQUARE_SIZE/2, 10, 0, Math.PI * 2);
                 CTX.fill();
             })
 

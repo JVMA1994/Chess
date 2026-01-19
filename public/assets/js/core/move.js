@@ -6,6 +6,20 @@ class Move {
     this.toCol = toCol;
     this.piece = null;
     this.captured = null;
-    this.prevHasMoved = null;
+
+    // Special move flags
+    this.isCastling = false;
+    this.rookFromCol = null;
+    this.rookToCol = null;
+
+    this.isEnPassant = false;
+    this.enPassantCapturedPawn = null;
+
+    this.isPromotion = false;
+    this.promotionPiece = null;
+
+    // State restoration
+    this.prevHasMoved = false;
+    this.prevRookHasMoved = false;
   }
 }
