@@ -98,6 +98,25 @@ class WhiteKing extends King {
         return !(board.isSquareAttacked(7, 5, PlayerColor.BLACK) || board.isSquareAttacked(7, 6, PlayerColor.BLACK));
     }
 
+    checkQueenSideCastling(board) {
+        const rook = board.getPiece(7, 0);
+
+        if (!rook || rook.color !== this.color || rook.hasMoved)
+            return false;
+
+        const b1 = board.getPiece(7, 1);
+        const c1 = board.getPiece(7, 2);
+        const d1 = board.getPiece(7, 3);
+
+        // Squares between king and rook must be empty
+        if (b1 || c1 || d1)
+            return false;
+
+        // King must not pass through or land on attacked squares
+        return !(board.isSquareAttacked(7, 3, PlayerColor.BLACK) ||
+            board.isSquareAttacked(7, 2, PlayerColor.BLACK));
+    }
+
     getPseudoLegalMoves(board){
         let moves = super.getPseudoLegalMoves(board);
         if(this.hasMoved)
@@ -107,6 +126,12 @@ class WhiteKing extends King {
 
         if(this.checkKingSideCastling(board)){
             moves.push(Move.castling(this.row, this.col, 7, 6, 7, 5));
+        }
+
+        if (this.checkQueenSideCastling(board)) {
+            moves.push(
+                Move.castling(this.row, this.col, 7, 2, 0, 3)
+            );
         }
         return moves;
     }
@@ -132,6 +157,23 @@ class BlackKing extends King {
         return !(board.isSquareAttacked(0, 5, PlayerColor.WHITE) || board.isSquareAttacked(0, 6, PlayerColor.WHITE));
     }
 
+    checkQueenSideCastling(board) {
+        const rook = board.getPiece(0, 0);
+
+        if (!rook || rook.color !== this.color || rook.hasMoved)
+            return false;
+
+        const b8 = board.getPiece(0, 1);
+        const c8 = board.getPiece(0, 2);
+        const d8 = board.getPiece(0, 3);
+
+        if (b8 || c8 || d8)
+            return false;
+
+        return !(board.isSquareAttacked(0, 3, PlayerColor.WHITE) ||
+            board.isSquareAttacked(0, 2, PlayerColor.WHITE));
+    }
+
     getPseudoLegalMoves(board){
         let moves = super.getPseudoLegalMoves(board);
         if(this.hasMoved)
@@ -141,6 +183,12 @@ class BlackKing extends King {
 
         if(this.checkKingSideCastling(board)){
             moves.push(Move.castling(this.row, this.col, 0, 6, 7, 5));
+        }
+
+        if (this.checkQueenSideCastling(board)) {
+            moves.push(
+                Move.castling(this.row, this.col, 0, 2, 0, 3)
+            );
         }
         return moves;
     }
