@@ -22,4 +22,26 @@ class Move {
     this.prevHasMoved = false;
     this.prevRookHasMoved = false;
   }
+
+  // Factory methods for special moves
+  static castling(fromRow, fromCol, toRow, toCol, rookFromCol, rookToCol) {
+    const move = new Move(fromRow, fromCol, toRow, toCol);
+    move.isCastling = true;
+    move.rookFromCol = rookFromCol;
+    move.rookToCol = rookToCol;
+    return move;
+  }
+
+  static enPassant(fromRow, fromCol, toRow, toCol) {
+    const move = new Move(fromRow, fromCol, toRow, toCol);
+    move.isEnPassant = true;
+    return move;
+  }
+
+  static promotion(fromRow, fromCol, toRow, toCol, promotionPiece) {
+    const move = new Move(fromRow, fromCol, toRow, toCol);
+    move.isPromotion = true;
+    move.promotionPiece = promotionPiece;
+    return move;
+  }
 }

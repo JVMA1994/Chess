@@ -139,8 +139,9 @@ class Game extends EventEmitter {
         const move = new Move(piece.row, piece.col, row, col);
 
         // Attempt to make the move
-        if (this.board.isLegalMove(piece, move)) {
-            this.#executeLegalMove(move, piece);
+        let legalMove = this.board.getLegalMoveOrNull(piece, move);
+        if (legalMove) {
+            this.#executeLegalMove(legalMove, piece);
         } else {
             this.#resetPiecePosition(piece);
         }

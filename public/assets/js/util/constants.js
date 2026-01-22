@@ -57,3 +57,23 @@ const UserMessage = Object.freeze({
     PAUSED: 'Game Paused',
 })
 
+const KNIGHT_OFFSETS = [
+    [-2, -1], [-2, 1],
+    [-1, -2], [-1, 2],
+    [1, -2], [1, 2],
+    [2, -1], [2, 1]
+];
+
+const KING_OFFSETS = [
+    [-1, -1], [-1, 0], [-1, 1],
+    [0, -1],           [0, 1],
+    [1, -1],  [1, 0],  [1, 1]
+];
+
+const ROOK_DIRS = [
+    [-1, 0], [1, 0], [0, -1], [0, 1]
+];
+
+const BISHOP_DIRS = [
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+];

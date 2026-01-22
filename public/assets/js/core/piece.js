@@ -43,6 +43,23 @@ class King extends Piece {
         return false;
     }
 
+    /**
+     * A king can castle if and only if:
+     *
+     * King has not moved
+     *
+     * Corresponding rook has not moved
+     *
+     * Squares between king and rook are empty
+     *
+     * King is NOT in check
+     *
+     * King does NOT pass through check
+     *
+     * King does NOT end in check
+     * @param board
+     * @returns {*[]}
+     */
     getPseudoLegalMoves(board) {
         let direction = [[0, -1], [0, 1], [1, 0], [-1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]];
         let moves = [];
@@ -53,10 +70,7 @@ class King extends Piece {
                 if (this.isValidMove(board, r + dir[0], c + dir[1])) {
                     r += dir[0];
                     c += dir[1];
-                    moves.push({
-                        row: r,
-                        col: c
-                    });
+                    moves.push(new Move(this.row, this.col, r, c));
                 }
             });
 
@@ -68,11 +82,67 @@ class WhiteKing extends King {
     constructor(img) {
         super(img, PlayerColor.WHITE, 7, 4);
     }
+
+    checkKingSideCastling(board){
+        const rook = board.getPiece(7, 7)
+
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
+            return false
+
+        const f1 = board.getPiece(7, 5)
+        const g1 = board.getPiece(7, 6)
+
+        if(f1 || g1)
+            return false
+
+        return !(board.isSquareAttacked(7, 5, PlayerColor.BLACK) || board.isSquareAttacked(7, 6, PlayerColor.BLACK));
+    }
+
+    getPseudoLegalMoves(board){
+        let moves = super.getPseudoLegalMoves(board);
+        if(this.hasMoved)
+            return moves;
+        if(board.isKingInCheck(this.color))
+            return moves;
+
+        if(this.checkKingSideCastling(board)){
+            moves.push(Move.castling(this.row, this.col, 7, 6, 7, 5));
+        }
+        return moves;
+    }
 }
 
 class BlackKing extends King {
     constructor(img) {
         super(img, PlayerColor.BLACK, 0, 4);
+    }
+
+    checkKingSideCastling(board){
+        const rook = board.getPiece(0, 7)
+
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
+            return false
+
+        const f8 = board.getPiece(0, 5)
+        const g8 = board.getPiece(0, 6)
+
+        if(f8 || g8)
+            return false
+
+        return !(board.isSquareAttacked(0, 5, PlayerColor.WHITE) || board.isSquareAttacked(0, 6, PlayerColor.WHITE));
+    }
+
+    getPseudoLegalMoves(board){
+        let moves = super.getPseudoLegalMoves(board);
+        if(this.hasMoved)
+            return moves;
+        if(board.isKingInCheck(this.color))
+            return moves;
+
+        if(this.checkKingSideCastling(board)){
+            moves.push(Move.castling(this.row, this.col, 0, 6, 7, 5));
+        }
+        return moves;
     }
 }
 
@@ -100,10 +170,7 @@ class Queen extends Piece {
                 while (this.isValidMove(board, r + dir[0], c + dir[1])) {
                     r += dir[0];
                     c += dir[1];
-                    moves.push({
-                        row: r,
-                        col: c
-                    });
+                    moves.push(new Move(this.row, this.col, r, c));
                     if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
                         break;
                 }
@@ -148,10 +215,7 @@ class Rook extends Piece {
                 while (this.isValidMove(board, r + dir[0], c + dir[1])) {
                     r += dir[0];
                     c += dir[1];
-                    moves.push({
-                        row: r,
-                        col: c
-                    });
+                    moves.push(new Move(this.row, this.col, r, c));
                     if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
                         break;
                 }
@@ -200,10 +264,7 @@ class Bishop extends Piece {
                 while (this.isValidMove(board, r + dir[0], c + dir[1])) {
                     r += dir[0];
                     c += dir[1];
-                    moves.push({
-                        row: r,
-                        col: c
-                    });
+                    moves.push(new Move(this.row, this.col, r, c));
                     if (board.boardArr[r][c] !== null && board.boardArr[r][c].color !== this.color)
                         break;
                 }
@@ -249,10 +310,7 @@ class Knight extends Piece {
         direction
             .forEach(dir => {
                 if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                    moves.push({
-                        row: this.row + dir[0],
-                        col: this.col + dir[1]
-                    });
+                    moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
                 }
             });
         return moves;
@@ -327,10 +385,7 @@ class WhitePawn extends Piece {
         direction
             .forEach(dir => {
                 if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                    moves.push({
-                        row: this.row + dir[0],
-                        col: this.col + dir[1]
-                    });
+                    moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
                 }
             });
         return moves;
@@ -391,10 +446,7 @@ class BlackPawn extends Piece {
         direction
             .forEach(dir => {
                 if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                    moves.push({
-                        row: this.row + dir[0],
-                        col: this.col + dir[1]
-                    });
+                    moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
                 }
             });
         return moves;

@@ -21,6 +21,10 @@ class Board{
         if (piece instanceof BlackKing) this.blackKing = piece
     }
 
+    getPiece(row, col){
+        return this.boardArr[row][col];
+    }
+
     initializeBoard(images) {
         // ---------- BLACK PIECES ----------
         this.placePiece(new BlackRook(images.bR, 0));
@@ -51,12 +55,12 @@ class Board{
         }
     }
 
-    isLegalMove(piece, move) {
+    getLegalMoveOrNull(piece, move) {
         const cachedMoves = this.legalMovesForAPieceCache?.get(piece);
         const moves = cachedMoves ?? this.getLegalMovesOfPiece(piece);
 
         // 1. Is this move even pseudo-legal?
-        return moves.some(m =>
+        return moves.find(m =>
             m.toRow === move.toRow &&
             m.toCol === move.toCol
         );
@@ -67,14 +71,13 @@ class Board{
         const moves = piece.getPseudoLegalMoves(this);
 
         for(const move of moves){
-            const mv = new Move(piece.row, piece.col, move.row, move.col);
-            this.makeMove(mv);
+            this.makeMove(move);
 
             if(!this.isKingInCheck(piece.color)){
-                legalMoves.push(mv);
+                legalMoves.push(move);
             }
 
-            this.undoMove(mv);
+            this.undoMove(move);
         }
         return legalMoves;
     }
@@ -95,14 +98,13 @@ class Board{
                 const moves = piece.getPseudoLegalMoves(this);
 
                 for(const move of moves){
-                    const mv = new Move(piece.row, piece.col, move.row, move.col);
-                    this.makeMove(mv);
+                    this.makeMove(move);
 
                     if(!this.isKingInCheck(color)){
-                        legalMoves.push(mv);
+                        legalMoves.push(move);
                     }
 
-                    this.undoMove(mv);
+                    this.undoMove(move);
                 }
             }
         }
@@ -146,6 +148,14 @@ class Board{
         piece.col = move.toCol;
         move.prevHasMoved = piece.hasMoved
         piece.hasMoved = true;
+
+        if(move.isCastling){
+            const rook = this.boardArr[move.fromRow][move.rookFromCol];
+            this.boardArr[piece.row][move.rookFromCol] = null;
+            this.boardArr[piece.row][move.rookToCol] = rook;
+            move.prevRookHasMoved = rook.hasMoved;
+            rook.hasMoved = true;
+        }
     }
 
     undoMove(move) {
@@ -157,33 +167,146 @@ class Board{
         piece.row = move.fromRow;
         piece.col = move.fromCol;
         piece.hasMoved = move.prevHasMoved
+
+        if(move.isCastling){
+            const rook = this.boardArr[move.toRow][move.rookToCol];
+            this.boardArr[move.toRow][move.rookToCol] = null;
+            this.boardArr[move.fromRow][move.rookFromCol] = rook;
+            rook.hasMoved = move.prevRookHasMoved;
+        }
     }
 
     isKingInCheck(color){
         const king = color === PlayerColor.WHITE ? this.whiteKing : this.blackKing;
+        return this.isSquareAttacked(king.row, king.col, this.#getOpponentColor(color));
+    }
 
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                const piece = this.boardArr[row][col];
-                if (!piece || piece.color === color) continue;
+    isSquareAttacked(row, col, byColor) {
+        return (
+            this.#isPawnAttack(row, col, byColor) ||
+            this.#isKnightAttack(row, col, byColor) ||
+            this.#isSlidingAttack(row, col, byColor, ROOK_DIRS, Rook) ||
+            this.#isSlidingAttack(row, col, byColor, BISHOP_DIRS, Bishop) ||
+            this.#isKingAttack(row, col, byColor)
+        );
+    }
 
-                const moves = piece.getPseudoLegalMoves(this);
-
-                for (const move of moves) {
-                    // Pawn special-case: only diagonals attack
-                    if (piece instanceof WhitePawn || piece instanceof BlackPawn) {
-                        if (move.col === piece.col) continue;
-                    }
-
-                    if (move.row === king.row && move.col === king.col) {
-                        return true;
-                    }
+    /**
+     * Check if a knight of {@param color} attacks a square [{@param row}][{@param col}]
+     * @param row row of square
+     * @param col col of square
+     * @param color attacker's color
+     * @returns {boolean}
+     */
+    #isKnightAttack(row, col, color) {
+        for(const [dr, dc] of KNIGHT_OFFSETS) {
+            const newRow = row + dr;
+            const newCol = col + dc;
+            if(this.#isInsideBoard(newRow, newCol)){
+                let piece = this.boardArr[newRow][newCol];
+                if(piece && piece.color === color && piece instanceof Knight){
+                    return true;
                 }
             }
         }
         return false;
     }
 
+    /**
+     * Check if a pawn of {@param color} attacks a square [{@param row}][{@param col}]
+     * @param row row of square
+     * @param col col of square
+     * @param color attacker's color
+     * @returns {boolean}
+     */
+    #isPawnAttack(row, col, color){
+        const dir = color === PlayerColor.WHITE ? 1 : -1;
+        const pawnClass = color === PlayerColor.WHITE ? WhitePawn : BlackPawn;
+
+        for(const c of [-1, 1]){
+            const newRow = row + dir;
+            const newCol = col + c;
+            if(this.#isInsideBoard(newRow, newCol)){
+                let piece = this.boardArr[newRow][newCol];
+                if(piece && piece instanceof pawnClass){
+                    return true
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if a king of {@param color} attacks a square [{@param row}][{@param col}]
+     * @param row row of square
+     * @param col col of square
+     * @param color attacker's color
+     * @returns {boolean}
+     */
+    #isKingAttack(row, col, color) {
+        for (const [dr, dc] of KING_OFFSETS) {
+            const newRow = row + dr;
+            const newCol = col + dc;
+
+            if(this.#isInsideBoard(newRow, newCol)){
+                const p = this.boardArr[newRow][newCol];
+                if (p && p.color === color && p instanceof King) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if a bishop, rook or queen of {@param color} attacks a square [{@param row}][{@param col}]
+     * @param row row of square
+     * @param col col of square
+     * @param color attacker's color
+     * @param dir direction for either rook or queen/ bishop or queen
+     * @param pieceClass Bishop or Rook
+     * @returns {boolean}
+     */
+    #isSlidingAttack(row, col, color, dir, pieceClass){
+        for (const [dr, dc] of dir){
+            let newRow = row + dr;
+            let newCol = col + dc;
+
+            while(this.#isInsideBoard(newRow, newCol)){
+
+                const p = this.boardArr[newRow][newCol];
+                if (p) {
+                    if(p.color === color && (p instanceof pieceClass || p instanceof Queen))
+                        return true;
+                    else
+                        break;
+                }
+
+                newRow += dr;
+                newCol += dc;
+
+            }
+        }
+
+        return false;
+    }
+
+    #getOpponentColor(color) {
+        return PlayerColor.WHITE === color ? PlayerColor.BLACK : PlayerColor.WHITE;
+    }
+
+    /**
+     * Checks whether the board coordinates are inside the chessboard.
+     *
+     * @param {number} row
+     * @param {number} col
+     * @returns {boolean}
+     */
+    #isInsideBoard(row, col) {
+        return row >= 0 && row < 8 && col >= 0 && col < 8;
+    }
+
+    // cache related functions
 
     cacheLegalMoves(draggedPiece, legalMoves) {
         this.legalMovesForAPieceCache.set(draggedPiece, legalMoves);
