@@ -1156,42 +1156,530 @@ describe('Legal Move Generation', () => {
 });
 
 // ============================================================================
-// MOVE UNDO TESTS
+// MAKE MOVE TESTS
 // ============================================================================
 
-describe('Move Undo', () => {
+describe('makeMove', () => {
 
-    test('Regular move undo restores board state', () => {
-        const board = createEmptyBoard();
+    describe('Regular Moves', () => {
+        test('Moves piece to new square', () => {
+            const board = createEmptyBoard();
 
-        const king = placePieceAt(board, WhiteKing, 7, 4);
-        placePieceAt(board, BlackKing, 0, 4);
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
 
-        const move = new Move(7, 4, 6, 4);
+            const move = new Move(7, 4, 6, 4);
+            board.makeMove(move);
 
-        board.makeMove(move);
-        expect(board.boardArr[6][4]).toBe(king);
+            expect(board.boardArr[6][4]).toBe(king);
+            expect(board.boardArr[7][4]).toBeNull();
+        });
 
-        board.undoMove(move);
-        expect(board.boardArr[7][4]).toBe(king);
-        expect(board.boardArr[6][4]).toBeNull();
+        test('Updates piece row and col properties', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 0, 3, 0);
+            board.makeMove(move);
+
+            expect(rook.row).toBe(3);
+            expect(rook.col).toBe(0);
+        });
+
+        test('Sets hasMoved flag to true', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            rook.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 0, 5, 0);
+            board.makeMove(move);
+
+            expect(rook.hasMoved).toBe(true);
+        });
+
+        test('Stores previous hasMoved state in move', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            rook.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 0, 5, 0);
+            board.makeMove(move);
+
+            expect(move.prevHasMoved).toBe(false);
+        });
     });
 
-    test('Capture undo restores captured piece', () => {
-        const board = createEmptyBoard();
+    describe('Captures', () => {
+        test('Removes captured piece from board', () => {
+            const board = createEmptyBoard();
 
-        const whiteKing = placePieceAt(board, WhiteKing, 7, 4);
-        const whiteRook = placePieceAt(board, WhiteRook, 4, 4);
-        const blackPawn = placePieceAt(board, BlackPawn, 4, 5);
-        placePieceAt(board, BlackKing, 0, 4);
+            const whiteRook = placePieceAt(board, WhiteRook, 4, 4);
+            const blackPawn = placePieceAt(board, BlackPawn, 4, 5);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
 
-        const captureMove = new Move(4, 4, 4, 5);
+            const captureMove = new Move(4, 4, 4, 5);
+            board.makeMove(captureMove);
 
-        board.makeMove(captureMove);
-        expect(board.boardArr[4][5]).toBe(whiteRook);
+            expect(board.boardArr[4][5]).toBe(whiteRook);
+            expect(board.boardArr[4][4]).toBeNull();
+        });
 
-        board.undoMove(captureMove);
-        expect(board.boardArr[4][4]).toBe(whiteRook);
-        expect(board.boardArr[4][5]).toBe(blackPawn);
+        test('Stores captured piece in move.captured', () => {
+            const board = createEmptyBoard();
+
+            const whiteRook = placePieceAt(board, WhiteRook, 4, 4);
+            const blackPawn = placePieceAt(board, BlackPawn, 4, 5);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const captureMove = new Move(4, 4, 4, 5);
+            board.makeMove(captureMove);
+
+            expect(captureMove.captured).toBe(blackPawn);
+        });
+    });
+
+    describe('Pawn Double Push', () => {
+        test('White pawn double push sets en passant target', () => {
+            const board = createEmptyBoard();
+
+            const pawn = placePieceAt(board, WhitePawn, 6, 4);
+            pawn.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const doublePush = new Move(6, 4, 4, 4);
+            board.makeMove(doublePush);
+
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
+        });
+
+        test('Black pawn double push sets en passant target', () => {
+            const board = createEmptyBoard();
+
+            const pawn = placePieceAt(board, BlackPawn, 1, 4);
+            pawn.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const doublePush = new Move(1, 4, 3, 4);
+            board.makeMove(doublePush);
+
+            expect(board.enPassantTargetSquare).toEqual({ row: 2, col: 4 });
+        });
+
+        test('Single pawn push clears en passant target', () => {
+            const board = createEmptyBoard();
+
+            board.enPassantTargetSquare = { row: 2, col: 3 };
+
+            const pawn = placePieceAt(board, WhitePawn, 4, 4);
+            pawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const singlePush = new Move(4, 4, 3, 4);
+            board.makeMove(singlePush);
+
+            expect(board.enPassantTargetSquare).toBeNull();
+        });
+    });
+
+    describe('Castling Move', () => {
+        test('King-side castling moves rook to f1', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+
+            expect(board.boardArr[7][5]).toBe(rook);
+            expect(board.boardArr[7][7]).toBeNull();
+            expect(rook.hasMoved).toBe(true);
+        });
+
+        test('Queen-side castling moves rook to d1', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 2, 0, 3);
+            board.makeMove(castlingMove);
+
+            expect(board.boardArr[7][3]).toBe(rook);
+            expect(board.boardArr[7][0]).toBeNull();
+        });
+
+        test('Castling stores previous rook hasMoved state', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+
+            expect(castlingMove.prevRookHasMoved).toBe(false);
+        });
+    });
+
+    describe('En Passant Move', () => {
+        test('En passant removes captured pawn from original square', () => {
+            const board = createEmptyBoard();
+
+            const whitePawn = placePieceAt(board, WhitePawn, 3, 4);
+            whitePawn.hasMoved = true;
+            const blackPawn = placePieceAt(board, BlackPawn, 3, 3);
+            blackPawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            board.enPassantTargetSquare = { row: 2, col: 3 };
+
+            const enPassantMove = Move.enPassant(3, 4, 2, 3, 3, 3);
+            board.makeMove(enPassantMove);
+
+            // White pawn at target square
+            expect(board.boardArr[2][3]).toBe(whitePawn);
+            // Original white pawn square empty
+            expect(board.boardArr[3][4]).toBeNull();
+            // Captured black pawn square empty
+            expect(board.boardArr[3][3]).toBeNull();
+        });
+
+        test('En passant stores captured pawn in move.captured', () => {
+            const board = createEmptyBoard();
+
+            const whitePawn = placePieceAt(board, WhitePawn, 3, 4);
+            whitePawn.hasMoved = true;
+            const blackPawn = placePieceAt(board, BlackPawn, 3, 3);
+            blackPawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const enPassantMove = Move.enPassant(3, 4, 2, 3, 3, 3);
+            board.makeMove(enPassantMove);
+
+            expect(enPassantMove.captured).toBe(blackPawn);
+        });
+    });
+});
+
+// ============================================================================
+// UNDO MOVE TESTS
+// ============================================================================
+
+describe('undoMove', () => {
+
+    describe('Regular Moves', () => {
+        test('Restores piece to original square', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 4, 6, 4);
+            board.makeMove(move);
+            board.undoMove(move);
+
+            expect(board.boardArr[7][4]).toBe(king);
+            expect(board.boardArr[6][4]).toBeNull();
+        });
+
+        test('Restores piece row and col properties', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 0, 3, 0);
+            board.makeMove(move);
+            board.undoMove(move);
+
+            expect(rook.row).toBe(7);
+            expect(rook.col).toBe(0);
+        });
+
+        test('Restores hasMoved flag to previous state', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            rook.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(7, 0, 5, 0);
+            board.makeMove(move);
+            expect(rook.hasMoved).toBe(true);
+
+            board.undoMove(move);
+            expect(rook.hasMoved).toBe(false);
+        });
+
+        test('Piece that already moved stays hasMoved after undo', () => {
+            const board = createEmptyBoard();
+
+            const rook = placePieceAt(board, WhiteRook, 5, 0);
+            rook.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const move = new Move(5, 0, 3, 0);
+            board.makeMove(move);
+            board.undoMove(move);
+
+            expect(rook.hasMoved).toBe(true);
+        });
+    });
+
+    describe('Captures', () => {
+        test('Restores captured piece to its square', () => {
+            const board = createEmptyBoard();
+
+            const whiteRook = placePieceAt(board, WhiteRook, 4, 4);
+            const blackPawn = placePieceAt(board, BlackPawn, 4, 5);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const captureMove = new Move(4, 4, 4, 5);
+            board.makeMove(captureMove);
+            board.undoMove(captureMove);
+
+            expect(board.boardArr[4][4]).toBe(whiteRook);
+            expect(board.boardArr[4][5]).toBe(blackPawn);
+        });
+
+        test('Multiple captures and undos work correctly', () => {
+            const board = createEmptyBoard();
+
+            const whiteRook = placePieceAt(board, WhiteRook, 4, 0);
+            const blackPawn1 = placePieceAt(board, BlackPawn, 4, 2);
+            const blackPawn2 = placePieceAt(board, BlackPawn, 4, 4);
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const capture1 = new Move(4, 0, 4, 2);
+            const capture2 = new Move(4, 2, 4, 4);
+
+            board.makeMove(capture1);
+            board.makeMove(capture2);
+
+            board.undoMove(capture2);
+            expect(board.boardArr[4][2]).toBe(whiteRook);
+            expect(board.boardArr[4][4]).toBe(blackPawn2);
+
+            board.undoMove(capture1);
+            expect(board.boardArr[4][0]).toBe(whiteRook);
+            expect(board.boardArr[4][2]).toBe(blackPawn1);
+        });
+    });
+
+    describe('Pawn Double Push', () => {
+        test('Restores previous en passant target square', () => {
+            const board = createEmptyBoard();
+
+            // Set an existing en passant target
+            board.enPassantTargetSquare = { row: 5, col: 3 };
+
+            const pawn = placePieceAt(board, WhitePawn, 6, 4);
+            pawn.hasMoved = false;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const doublePush = new Move(6, 4, 4, 4);
+            board.makeMove(doublePush);
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
+
+            board.undoMove(doublePush);
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 3 });
+        });
+    });
+
+    describe('Castling Move', () => {
+        test('Restores king to original position', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+            board.undoMove(castlingMove);
+
+            expect(board.boardArr[7][4]).toBe(king);
+            expect(king.col).toBe(4);
+        });
+
+        test('Restores rook to original position', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+            board.undoMove(castlingMove);
+
+            expect(board.boardArr[7][7]).toBe(rook);
+            expect(board.boardArr[7][5]).toBeNull();
+        });
+
+        test('Restores king hasMoved flag', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+            board.undoMove(castlingMove);
+
+            expect(king.hasMoved).toBe(false);
+        });
+
+        test('Restores rook hasMoved flag', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            king.hasMoved = false;
+            const rook = placePieceAt(board, WhiteRook, 7, 7);
+            rook.hasMoved = false;
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+            board.undoMove(castlingMove);
+
+            expect(rook.hasMoved).toBe(false);
+        });
+    });
+
+    describe('En Passant Move', () => {
+        test('Restores capturing pawn to original square', () => {
+            const board = createEmptyBoard();
+
+            const whitePawn = placePieceAt(board, WhitePawn, 3, 4);
+            whitePawn.hasMoved = true;
+            const blackPawn = placePieceAt(board, BlackPawn, 3, 3);
+            blackPawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            board.enPassantTargetSquare = { row: 2, col: 3 };
+
+            const enPassantMove = Move.enPassant(3, 4, 2, 3, 3, 3);
+            board.makeMove(enPassantMove);
+            board.undoMove(enPassantMove);
+
+            expect(board.boardArr[3][4]).toBe(whitePawn);
+            expect(whitePawn.row).toBe(3);
+            expect(whitePawn.col).toBe(4);
+        });
+
+        test('Restores captured pawn to its original square', () => {
+            const board = createEmptyBoard();
+
+            const whitePawn = placePieceAt(board, WhitePawn, 3, 4);
+            whitePawn.hasMoved = true;
+            const blackPawn = placePieceAt(board, BlackPawn, 3, 3);
+            blackPawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            board.enPassantTargetSquare = { row: 2, col: 3 };
+
+            const enPassantMove = Move.enPassant(3, 4, 2, 3, 3, 3);
+            board.makeMove(enPassantMove);
+            board.undoMove(enPassantMove);
+
+            expect(board.boardArr[3][3]).toBe(blackPawn);
+        });
+
+        test('Target square is empty after undo', () => {
+            const board = createEmptyBoard();
+
+            const whitePawn = placePieceAt(board, WhitePawn, 3, 4);
+            whitePawn.hasMoved = true;
+            const blackPawn = placePieceAt(board, BlackPawn, 3, 3);
+            blackPawn.hasMoved = true;
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            board.enPassantTargetSquare = { row: 2, col: 3 };
+
+            const enPassantMove = Move.enPassant(3, 4, 2, 3, 3, 3);
+            board.makeMove(enPassantMove);
+            board.undoMove(enPassantMove);
+
+            expect(board.boardArr[2][3]).toBeNull();
+        });
+    });
+
+    describe('Board State Consistency', () => {
+        test('Multiple move/undo cycles preserve board state', () => {
+            const board = createEmptyBoard();
+
+            const king = placePieceAt(board, WhiteKing, 7, 4);
+            const rook = placePieceAt(board, WhiteRook, 7, 0);
+            const pawn = placePieceAt(board, WhitePawn, 6, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            // Snapshot original state
+            const originalKingPos = { row: king.row, col: king.col };
+            const originalRookPos = { row: rook.row, col: rook.col };
+
+            // Make several moves
+            const moves = [
+                new Move(6, 4, 5, 4),
+                new Move(7, 0, 5, 0),
+                new Move(7, 4, 6, 4)
+            ];
+
+            for (const move of moves) {
+                board.makeMove(move);
+            }
+
+            // Undo all moves in reverse order
+            for (let i = moves.length - 1; i >= 0; i--) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify original state
+            expect(board.boardArr[7][4]).toBe(king);
+            expect(board.boardArr[7][0]).toBe(rook);
+            expect(board.boardArr[6][4]).toBe(pawn);
+        });
     });
 });
