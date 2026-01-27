@@ -378,9 +378,14 @@ class BlackKnight extends Knight {
     }
 }
 
-class WhitePawn extends Piece {
+class Pawn extends Piece {
+    constructor(img, row, col, color) {
+        super(img, color, row, col); // col: 0–7
+    }
+}
+class WhitePawn extends Pawn {
     constructor(img, col) {
-        super(img, PlayerColor.WHITE, 6, col); // col: 0–7
+        super(img, 6, col, PlayerColor.WHITE); // col: 0–7
     }
 
     /**
@@ -422,7 +427,6 @@ class WhitePawn extends Piece {
         ) {
             return true;
         }
-        //TODO: En passant
         //TODO: promotion
         return false;
     }
@@ -436,13 +440,24 @@ class WhitePawn extends Piece {
                     moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
                 }
             });
+        let diagonalSquares = [[-1, -1], [-1, 1]];
+
+        if(board.enPassantTargetSquare){
+            diagonalSquares
+                .forEach(dir => {
+                    if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
+                        moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
+                    }
+                })
+        }
+
         return moves;
     }
 }
 
-class BlackPawn extends Piece {
+class BlackPawn extends Pawn {
     constructor(img, col) {
-        super(img, PlayerColor.BLACK, 1, col); // col: 0–7
+        super(img, 1, col, PlayerColor.BLACK); // col: 0–7
     }
 
     /**
@@ -482,7 +497,6 @@ class BlackPawn extends Piece {
         ) {
             return true;
         }
-        //TODO: En passant
         //TODO: promotion
         return false;
     }
@@ -497,6 +511,18 @@ class BlackPawn extends Piece {
                     moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
                 }
             });
+
+        let diagonalSquares = [[1, -1], [1, 1]];
+
+        if(board.enPassantTargetSquare){
+            diagonalSquares
+                .forEach(dir => {
+                    if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
+                        moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
+                    }
+                })
+        }
+
         return moves;
     }
 }

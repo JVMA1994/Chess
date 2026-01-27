@@ -6,6 +6,8 @@ class Board{
         this.blackKing = null
         this.whiteKing = null
         this.legalMovesForAPieceCache = new Map();
+        this.enPassantTargetSquare = null
+        this.previousEnPassantTargetSquare = null
     }
 
     placePiece(piece) {
@@ -137,6 +139,9 @@ class Board{
     }
 
     makeMove(move) {
+        this.previousEnPassantTargetSquare = this.enPassantTargetSquare;
+        this.enPassantTargetSquare = null;
+
         const piece = this.boardArr[move.fromRow][move.fromCol];
 
         move.captured = this.boardArr[move.toRow][move.toCol];
@@ -146,6 +151,7 @@ class Board{
 
         piece.row = move.toRow;
         piece.col = move.toCol;
+
         move.prevHasMoved = piece.hasMoved
         piece.hasMoved = true;
 
@@ -156,9 +162,23 @@ class Board{
             move.prevRookHasMoved = rook.hasMoved;
             rook.hasMoved = true;
         }
+
+        if(move.isEnPassant){
+            move.captured = this.boardArr[move.capturedPawnRow][move.capturedPawnCol];
+            this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = null;
+        }
+
+        if(Math.abs(move.toRow - move.fromRow) === 2){
+            if(piece instanceof WhitePawn)
+                this.enPassantTargetSquare = {row: move.toRow + 1, col: move.toCol}
+            else if(piece instanceof BlackPawn)
+                this.enPassantTargetSquare = {row: move.toRow - 1, col: move.toCol}
+        }
     }
 
     undoMove(move) {
+        this.enPassantTargetSquare = this.previousEnPassantTargetSquare;
+
         const piece = this.boardArr[move.toRow][move.toCol];
 
         this.boardArr[move.toRow][move.toCol] = move.captured;
@@ -173,6 +193,11 @@ class Board{
             this.boardArr[move.toRow][move.rookToCol] = null;
             this.boardArr[move.fromRow][move.rookFromCol] = rook;
             rook.hasMoved = move.prevRookHasMoved;
+        }
+
+        if(move.isEnPassant){
+            this.boardArr[move.toRow][move.toCol] = null;
+            this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = move.captured;
         }
     }
 

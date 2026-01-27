@@ -13,7 +13,8 @@ class Move {
     this.rookToCol = null;
 
     this.isEnPassant = false;
-    this.enPassantCapturedPawn = null;
+    this.capturedPawnRow = null;
+    this.capturedPawnCol = null;
 
     this.isPromotion = false;
     this.promotionPiece = null;
@@ -32,9 +33,11 @@ class Move {
     return move;
   }
 
-  static enPassant(fromRow, fromCol, toRow, toCol) {
+  static enPassant(fromRow, fromCol, toRow, toCol, pawnRow, pawnCol) {
     const move = new Move(fromRow, fromCol, toRow, toCol);
     move.isEnPassant = true;
+    move.capturedPawnRow = pawnRow;
+    move.capturedPawnCol = pawnCol;
     return move;
   }
 
