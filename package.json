@@ -1,0 +1,13 @@
+{
+  "name": "chess",
+  "version": "1.0.0",
+  "description": "A vanilla JavaScript chess game",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0"
+  }
+}
