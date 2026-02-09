@@ -46,33 +46,33 @@ class EventEmitter {
  */
 class Game extends EventEmitter {
 
-    constructor(renderer, assets) {
+    constructor(renderer) {
         super();
         this.mainMenu = new MainMenu(this);
         this.resetMenu = new ResetMenu(this);
         this.activeMenu = this.mainMenu;
         this.inputManager = new InputManager(this);
-        this.assets = assets;
         this.renderer = renderer;
         this.phase = GameState.NOT_STARTED;
     }
 
     start() {
-        this.inputManager.activateMenuControllers();
         this.activeMenu.draw();
+        this.inputManager.activateMenuControllers();
     }
 
     startNewGame() {
+        this.phase = GameState.SETUP;
         this.board = new Board();
         this.inputManager.deactivateMenuControllers();
-        this.board.initializeBoard(this.assets);
+        this.board.initializeBoard();
         this.renderer.drawBoard(this.board);
         this.inputManager.activateGameControllers();
         this.phase = GameState.WHITE_TURN;
     }
 
     switchTurn() {
-        this.phase = this.phase === GameState.WHITE_TURN ? GameState.BLACK_TURN : GameState.WHITE_TURN;
+        this.phase = this.phase === GameState.WHITE_TURN || this.phase === GameState.WHITE_PROMOTING ? GameState.BLACK_TURN : GameState.WHITE_TURN;
     }
 
     isGameOver() {
@@ -147,11 +147,39 @@ class Game extends EventEmitter {
         }
     }
 
+    promotePawn(promotingPawn, selectedType) {
+        this.activeMenu = null;
+        const promotedPiece = this.#createPromotedPiece(selectedType, promotingPawn.color, promotingPawn.row, promotingPawn.col);
+        this.board.placePiece(promotedPiece);
+        this.inputManager.deactivateMenuControllers();
+        const gameState = this.board.evaluateGameState(this.#getOpponentColor(promotingPawn.color));
+        if (gameState === GameState.CONTINUE) {
+            this.switchTurn();
+        } else {
+            this.#handleGameEnd(gameState);
+        }
+        this.renderer.drawBoard(this.board);
+        this.inputManager.activateGameControllers();
+    }
+
     #executeLegalMove(move, piece) {
         this.board.makeMove(move);
         this.#resetPiecePosition(piece);
         this.board.evictLegalMovesCache();
 
+        if (move.isPromotion) {
+            this.inputManager.deactivateGameControllers();
+            this.activeMenu = new PromotionMenu({
+                game: this,
+                pawn: piece
+            });
+            this.activeMenu.draw();
+            this.inputManager.activateMenuControllers();
+            setTimeout(() => {
+                this.phase = PlayerColor.WHITE === piece.color ? GameState.WHITE_PROMOTING : GameState.BLACK_PROMOTING;
+            }, 0);
+            return;
+        }
         // evaluate game state using opponent's color to check whether the opponent's king is in check allowing for checkmate, or
         // stalemate
         const gameState = this.board.evaluateGameState(
@@ -254,14 +282,28 @@ class Game extends EventEmitter {
      * @param {array} validMoves
      */
     #renderDraggingPiece(mx, my, validMoves) {
-        this.renderer.drawBoard(this.board);
-        this.renderer.drawValidPositions(this.board, validMoves)
-        CTX.drawImage(
-            this.draggedPiece.image,
-            mx - PIECE_SIZE / 2,
-            my - PIECE_SIZE / 2,
-            PIECE_SIZE,
-            PIECE_SIZE
-        );
+        this.renderer.renderDraggingPiece(mx, my, validMoves, this.board, this.draggedPiece);
+    }
+
+    #createPromotedPiece(type, color, row, col) {
+        if (type === PromotionType.QUEEN)
+            return color === PlayerColor.WHITE
+                ? new WhiteQueen(col, row)
+                : new BlackQueen(col, row);
+
+        if (type === PromotionType.ROOK)
+            return color === PlayerColor.WHITE
+                ? new WhiteRook(col, row)
+                : new BlackRook(col, row);
+
+        if (type === PromotionType.BISHOP)
+            return color === PlayerColor.WHITE
+                ? new WhiteBishop(col, row)
+                : new BlackBishop(col, row);
+
+        if (type === PromotionType.KNIGHT)
+            return color === PlayerColor.WHITE
+                ? new WhiteKnight(col, row)
+                : new BlackKnight(col, row);
     }
 }

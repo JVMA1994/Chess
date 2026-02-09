@@ -456,21 +456,22 @@ class WhitePawn extends Pawn {
     }
 
     getPseudoLegalMoves(board) {
-        let direction = [[-1, 0], [-2, 0], [-1, -1], [-1, 1]];
-        let moves = [];
+        const lastRank = 0; // 0th row is the last rank for White Pawn
+        const direction = [[-1, 0], [-2, 0], [-1, -1], [-1, 1]];
+        const moves = [];
         direction.forEach(dir => {
-            if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
+            const targetRow = this.row + dir[0];
+            const targetCol = this.col + dir[1];
+            if (this.isValidMove(board, targetRow, targetCol)) {
+                if (targetRow === lastRank)
+                    moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                else
+                    moves.push(new Move(this.row, this.col, targetRow, targetCol));
+            }
+            if (Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol) {
+                moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
             }
         });
-        let diagonalSquares = [[-1, -1], [-1, 1]];
-        if (board.enPassantTargetSquare) {
-            diagonalSquares.forEach(dir => {
-                if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
-                    moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
-                }
-            });
-        }
         return moves;
     }
 }
@@ -503,21 +504,22 @@ class BlackPawn extends Pawn {
     }
 
     getPseudoLegalMoves(board) {
-        let direction = [[1, 0], [2, 0], [1, -1], [1, 1]];
-        let moves = [];
+        const lastRank = 7; // 7th row is the last rank for Black Pawn
+        const direction = [[1, 0], [2, 0], [1, -1], [1, 1]];
+        const moves = [];
         direction.forEach(dir => {
-            if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
+            const targetRow = this.row + dir[0];
+            const targetCol = this.col + dir[1];
+            if (this.isValidMove(board, targetRow, targetCol)) {
+                if (targetRow === lastRank)
+                    moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                else
+                    moves.push(new Move(this.row, this.col, targetRow, targetCol));
+            }
+            if (Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol) {
+                moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
             }
         });
-        let diagonalSquares = [[1, -1], [1, 1]];
-        if (board.enPassantTargetSquare) {
-            diagonalSquares.forEach(dir => {
-                if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
-                    moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
-                }
-            });
-        }
         return moves;
     }
 }
@@ -533,6 +535,35 @@ class Board {
         this.legalMovesForAPieceCache = new Map();
         this.enPassantTargetSquare = null;
         this.previousEnPassantTargetSquare = null;
+    }
+
+    initializeBoard() {
+        // Initialize all 32 pieces in starting configuration
+        // White pieces (rows 6 and 7)
+        for (let col = 0; col < 8; col++) {
+            this.placePiece(new WhitePawn(null, col));
+        }
+        this.placePiece(new WhiteRook(null, 0, 7));
+        this.placePiece(new WhiteKnight(null, 1, 7));
+        this.placePiece(new WhiteBishop(null, 2, 7));
+        this.placePiece(new WhiteQueen(null));
+        this.placePiece(new WhiteKing(null));
+        this.placePiece(new WhiteBishop(null, 5, 7));
+        this.placePiece(new WhiteKnight(null, 6, 7));
+        this.placePiece(new WhiteRook(null, 7, 7));
+
+        // Black pieces (rows 0 and 1)
+        for (let col = 0; col < 8; col++) {
+            this.placePiece(new BlackPawn(null, col));
+        }
+        this.placePiece(new BlackRook(null, 0, 0));
+        this.placePiece(new BlackKnight(null, 1, 0));
+        this.placePiece(new BlackBishop(null, 2, 0));
+        this.placePiece(new BlackQueen(null));
+        this.placePiece(new BlackKing(null));
+        this.placePiece(new BlackBishop(null, 5, 0));
+        this.placePiece(new BlackKnight(null, 6, 0));
+        this.placePiece(new BlackRook(null, 7, 0));
     }
 
     placePiece(piece) {
@@ -614,16 +645,22 @@ class Board {
     }
 
     makeMove(move) {
-        this.previousEnPassantTargetSquare = this.enPassantTargetSquare;
+        // Store previous en passant state in the move for undo
+        move.previousEnPassantTargetSquare = this.enPassantTargetSquare;
         this.enPassantTargetSquare = null;
+
         const piece = this.boardArr[move.fromRow][move.fromCol];
         move.captured = this.boardArr[move.toRow][move.toCol];
+
         this.boardArr[move.fromRow][move.fromCol] = null;
         this.boardArr[move.toRow][move.toCol] = piece;
+
         piece.row = move.toRow;
         piece.col = move.toCol;
+
         move.prevHasMoved = piece.hasMoved;
         piece.hasMoved = true;
+
         if (move.isCastling) {
             const rook = this.boardArr[move.fromRow][move.rookFromCol];
             this.boardArr[piece.row][move.rookFromCol] = null;
@@ -631,20 +668,48 @@ class Board {
             move.prevRookHasMoved = rook.hasMoved;
             rook.hasMoved = true;
         }
+
         if (move.isEnPassant) {
             move.captured = this.boardArr[move.capturedPawnRow][move.capturedPawnCol];
             this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = null;
         }
+
         if (Math.abs(move.toRow - move.fromRow) === 2) {
             if (piece instanceof WhitePawn)
                 this.enPassantTargetSquare = { row: move.toRow + 1, col: move.toCol };
             else if (piece instanceof BlackPawn)
                 this.enPassantTargetSquare = { row: move.toRow - 1, col: move.toCol };
         }
+
+        // Handle promotion
+        if (move.isPromotion && move.promotionPiece) {
+            // Store original pawn for undo
+            move.originalPawn = piece;
+
+            // Create promoted piece  
+            const promotedPiece = this._createPromotedPiece(
+                move.promotionPiece,
+                piece.color,
+                move.toRow,
+                move.toCol
+            );
+
+            // Replace pawn with promoted piece
+            this.boardArr[move.toRow][move.toCol] = promotedPiece;
+
+            // Update piece lists
+            const pieceList = piece.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
+            const pawnIndex = pieceList.indexOf(piece);
+            if (pawnIndex !== -1) {
+                pieceList.splice(pawnIndex, 1);
+            }
+            pieceList.push(promotedPiece);
+        }
     }
 
     undoMove(move) {
-        this.enPassantTargetSquare = this.previousEnPassantTargetSquare;
+        // Restore en passant state from the move object
+        this.enPassantTargetSquare = move.previousEnPassantTargetSquare;
         const piece = this.boardArr[move.toRow][move.toCol];
         this.boardArr[move.toRow][move.toCol] = move.captured;
         this.boardArr[move.fromRow][move.fromCol] = piece;
@@ -660,6 +725,24 @@ class Board {
         if (move.isEnPassant) {
             this.boardArr[move.toRow][move.toCol] = null;
             this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = move.captured;
+        }
+
+        // Handle promotion undo
+        if (move.isPromotion && move.originalPawn) {
+            // Remove promoted piece from board
+            const promotedPiece = this.boardArr[move.fromRow][move.fromCol];
+            this.boardArr[move.fromRow][move.fromCol] = move.originalPawn;
+
+            // Update piece lists
+            const pieceList = move.originalPawn.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
+            const promotedIndex = pieceList.indexOf(promotedPiece);
+            if (promotedIndex !== -1) {
+                pieceList.splice(promotedIndex, 1);
+            }
+            pieceList.push(move.originalPawn);
+
+            // Restore captured piece if any
+            this.boardArr[move.toRow][move.toCol] = move.captured;
         }
     }
 
@@ -739,6 +822,28 @@ class Board {
             }
         }
         return false;
+    }
+
+    _createPromotedPiece(type, color, row, col) {
+        if (type === PromotionType.QUEEN)
+            return color === PlayerColor.WHITE
+                ? new WhiteQueen(null, col, row)
+                : new BlackQueen(null, col, row);
+
+        if (type === PromotionType.ROOK)
+            return color === PlayerColor.WHITE
+                ? new WhiteRook(null, col, row)
+                : new BlackRook(null, col, row);
+
+        if (type === PromotionType.BISHOP)
+            return color === PlayerColor.WHITE
+                ? new WhiteBishop(null, col, row)
+                : new BlackBishop(null, col, row);
+
+        if (type === PromotionType.KNIGHT)
+            return color === PlayerColor.WHITE
+                ? new WhiteKnight(null, col, row)
+                : new BlackKnight(null, col, row);
     }
 
     _getOpponentColor(color) {

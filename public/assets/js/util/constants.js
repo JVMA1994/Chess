@@ -77,3 +77,9 @@ const ROOK_DIRS = [
 const BISHOP_DIRS = [
     [-1, -1], [-1, 1], [1, -1], [1, 1]
 ];
+const PromotionType = {
+    QUEEN: 'QUEEN',
+    ROOK: 'ROOK',
+    BISHOP: 'BISHOP',
+    KNIGHT: 'KNIGHT'
+};

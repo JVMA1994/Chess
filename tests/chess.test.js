@@ -1683,3 +1683,558 @@ describe('undoMove', () => {
         });
     });
 });
+
+// ============================================================================
+// PROMOTION TESTS
+// ============================================================================
+
+describe('Pawn Promotion', () => {
+
+    describe('Promotion Move Generation', () => {
+        test('White pawn generates promotion move when reaching rank 0', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            // White pawn one square away from promotion
+            const pawn = placePieceAt(board, WhitePawn, 1, 3);
+            pawn.hasMoved = true;
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const promotionMove = moves.find(m => m.toRow === 0 && m.toCol === 3);
+
+            expect(promotionMove).toBeDefined();
+            expect(promotionMove.isPromotion).toBe(true);
+        });
+
+        test('Black pawn generates promotion move when reaching rank 7', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            // Black pawn one square away from promotion
+            const pawn = placePieceAt(board, BlackPawn, 6, 3);
+            pawn.hasMoved = true;
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const promotionMove = moves.find(m => m.toRow === 7 && m.toCol === 3);
+
+            expect(promotionMove).toBeDefined();
+            expect(promotionMove.isPromotion).toBe(true);
+        });
+
+        test('White pawn generates promotion move with diagonal capture', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 7);
+            placePieceAt(board, BlackKing, 0, 0);
+
+            // White pawn one square away from promotion
+            const pawn = placePieceAt(board, WhitePawn, 1, 3);
+            pawn.hasMoved = true;
+
+            // Black piece to capture
+            placePieceAt(board, BlackRook, 0, 4);
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const capturePromotionMove = moves.find(m => m.toRow === 0 && m.toCol === 4);
+
+            expect(capturePromotionMove).toBeDefined();
+            expect(capturePromotionMove.isPromotion).toBe(true);
+        });
+
+        test('Black pawn generates promotion move with diagonal capture', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 7);
+            placePieceAt(board, BlackKing, 0, 0);
+
+            // Black pawn one square away from promotion
+            const pawn = placePieceAt(board, BlackPawn, 6, 3);
+            pawn.hasMoved = true;
+
+            // White piece to capture
+            placePieceAt(board, WhiteRook, 7, 4);
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const capturePromotionMove = moves.find(m => m.toRow === 7 && m.toCol === 4);
+
+            expect(capturePromotionMove).toBeDefined();
+            expect(capturePromotionMove.isPromotion).toBe(true);
+        });
+
+        test('Pawn does not generate promotion move on non-promotion squares', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            // White pawn not on promotion rank
+            const pawn = placePieceAt(board, WhitePawn, 4, 3);
+            pawn.hasMoved = true;
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const promotionMove = moves.find(m => m.isPromotion);
+
+            expect(promotionMove).toBeUndefined();
+        });
+    });
+
+    describe('Promotion Move Properties', () => {
+        test('Promotion move has correct flags and properties', () => {
+            const board = createEmptyBoard();
+
+            placePieceAt(board, WhiteKing, 7, 4);
+            placePieceAt(board, BlackKing, 0, 4);
+
+            const pawn = placePieceAt(board, WhitePawn, 1, 3);
+            pawn.hasMoved = true;
+
+            const moves = pawn.getPseudoLegalMoves(board);
+            const promotionMove = moves.find(m => m.isPromotion);
+
+            expect(promotionMove.fromRow).toBe(1);
+            expect(promotionMove.fromCol).toBe(3);
+            expect(promotionMove.toRow).toBe(0);
+            expect(promotionMove.toCol).toBe(3);
+            expect(promotionMove.isPromotion).toBe(true);
+            expect(promotionMove.isCastling).toBe(false);
+            expect(promotionMove.isEnPassant).toBe(false);
+        });
+    });
+
+    describe('Multiple Promotion Squares', () => {
+        test('White pawn can promote on any file (a-h)', () => {
+            // Test that promotion works on all 8 files
+            for (let col = 0; col < 8; col++) {
+                const board = createEmptyBoard();
+
+                // Place kings away from promotion ranks
+                placePieceAt(board, WhiteKing, 4, 4);
+                placePieceAt(board, BlackKing, 3, 3);
+
+                const pawn = placePieceAt(board, WhitePawn, 1, col);
+                pawn.hasMoved = true;
+
+                const moves = pawn.getPseudoLegalMoves(board);
+                const promotionMove = moves.find(m => m.isPromotion && m.toRow === 0 && m.toCol === col);
+
+                expect(promotionMove).toBeDefined();
+            }
+        });
+
+        test('Black pawn can promote on any file (a-h)', () => {
+            // Test that promotion works on all 8 files
+            for (let col = 0; col < 8; col++) {
+                const board = createEmptyBoard();
+
+                // Place kings away from promotion ranks
+                placePieceAt(board, WhiteKing, 4, 4);
+                placePieceAt(board, BlackKing, 3, 3);
+
+                const pawn = placePieceAt(board, BlackPawn, 6, col);
+                pawn.hasMoved = true;
+
+                const moves = pawn.getPseudoLegalMoves(board);
+                const promotionMove = moves.find(m => m.isPromotion && m.toRow === 7 && m.toCol === col);
+
+                expect(promotionMove).toBeDefined();
+            }
+        });
+    });
+});
+
+// ============================================================================
+// FULL GAME SIMULATION TESTS
+// ============================================================================
+
+describe('Full Game Simulations', () => {
+
+    /**
+     * Helper function to make a move and verify board consistency
+     */
+    function makeAndVerifyMove(board, fromRow, fromCol, toRow, toCol, expectations = {}) {
+        const piece = board.getPiece(fromRow, fromCol);
+        expect(piece).toBeTruthy();
+
+        const move = new Move(fromRow, fromCol, toRow, toCol);
+        const legalMove = board.getLegalMoveOrNull(piece, move);
+
+        expect(legalMove).toBeTruthy();
+
+        board.makeMove(legalMove);
+
+        // Verify piece moved
+        const movedPiece = board.getPiece(toRow, toCol);
+        expect(movedPiece).toBe(piece);
+        expect(piece.row).toBe(toRow);
+        expect(piece.col).toBe(toCol);
+
+        // Verify from square is empty (unless castling)
+        if (!legalMove.isCastling) {
+            expect(board.getPiece(fromRow, fromCol)).toBeNull();
+        }
+
+        // Optional: check if piece was captured
+        if (expectations.captureExpected) {
+            expect(legalMove.captured).toBeTruthy();
+        }
+
+        // Optional: check for check
+        if (expectations.checkColor !== undefined) {
+            expect(board.isKingInCheck(expectations.checkColor)).toBe(true);
+        }
+
+        return legalMove;
+    }
+
+    describe("Fool's Mate (Fastest Checkmate)", () => {
+        test("Fool's Mate in 2 moves", () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            // Snapshot initial state
+            const initialPieceCount = board.whitePieces.length + board.blackPieces.length;
+
+            // Move 1: White f3 (f2-f3)
+            const move1 = makeAndVerifyMove(board, 6, 5, 5, 5);
+            expect(move1).toBeTruthy();
+
+            // Move 2: Black e5 (e7-e5)
+            const move2 = makeAndVerifyMove(board, 1, 4, 3, 4);
+            expect(move2).toBeTruthy();
+
+            // Move 3: White g4 (g2-g4)
+            const move3 = makeAndVerifyMove(board, 6, 6, 4, 6);
+            expect(move3).toBeTruthy();
+
+            // Move 4: Black Qh4# (Qd8-h4)
+            const move4 = makeAndVerifyMove(board, 0, 3, 4, 7, {
+                checkColor: PlayerColor.WHITE
+            });
+            expect(move4).toBeTruthy();
+
+            // Verify checkmate
+            const gameState = board.evaluateGameState(PlayerColor.WHITE);
+            expect(gameState).toBe(GameState.CHECKMATE_BLACK_WINS);
+
+            // Verify no pieces were lost (yet)
+            const finalPieceCount = board.whitePieces.length + board.blackPieces.length;
+            expect(finalPieceCount).toBe(initialPieceCount);
+
+            // Undo all moves and verify board is restored
+            board.undoMove(move4);
+            board.undoMove(move3);
+            board.undoMove(move2);
+            board.undoMove(move1);
+
+            // Verify initial position is restored
+            expect(board.getPiece(6, 5)).toBeInstanceOf(WhitePawn); // f2
+            expect(board.getPiece(1, 4)).toBeInstanceOf(BlackPawn); // e7
+            expect(board.getPiece(6, 6)).toBeInstanceOf(WhitePawn); // g2
+            expect(board.getPiece(0, 3)).toBeInstanceOf(BlackQueen); // d8
+        });
+    });
+
+    describe("Scholar's Mate", () => {
+        test("Scholar's Mate in 4 moves", () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            // Move 1: e4 (e2-e4)
+            const m1 = makeAndVerifyMove(board, 6, 4, 4, 4);
+
+            // Move 2: e5 (e7-e5)
+            const m2 = makeAndVerifyMove(board, 1, 4, 3, 4);
+
+            // Move 3: Bc4 (Bf1-c4)
+            const m3 = makeAndVerifyMove(board, 7, 5, 4, 2);
+            expect(board.getPiece(4, 2)).toBeInstanceOf(WhiteBishop);
+
+            // Move 4: Nc6 (Nb8-c6)
+            const m4 = makeAndVerifyMove(board, 0, 1, 2, 2);
+            expect(board.getPiece(2, 2)).toBeInstanceOf(BlackKnight);
+
+            // Move 5: Qh5 (Qd1-h5)
+            const m5 = makeAndVerifyMove(board, 7, 3, 3, 7);
+            expect(board.getPiece(3, 7)).toBeInstanceOf(WhiteQueen);
+
+            // Move 6: Nf6 (Ng8-f6)
+            const m6 = makeAndVerifyMove(board, 0, 6, 2, 5);
+            expect(board.getPiece(2, 5)).toBeInstanceOf(BlackKnight);
+
+            // Move 7: Qxf7# (Qh5xf7)
+            const m7 = makeAndVerifyMove(board, 3, 7, 1, 5, {
+                captureExpected: true,
+                checkColor: PlayerColor.BLACK
+            });
+            expect(m7.captured).toBeInstanceOf(BlackPawn);
+
+            // Verify checkmate
+            const gameState = board.evaluateGameState(PlayerColor.BLACK);
+            expect(gameState).toBe(GameState.CHECKMATE_WHITE_WINS);
+
+            // Verify queen is on f7
+            expect(board.getPiece(1, 5)).toBeInstanceOf(WhiteQueen);
+
+            // Undo all moves to verify reversibility
+            const moves = [m7, m6, m5, m4, m3, m2, m1];
+            for (let i = 0; i < moves.length; i++) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify starting position restored
+            expect(board.getPiece(7, 4)).toBeInstanceOf(WhiteKing);
+            expect(board.getPiece(0, 4)).toBeInstanceOf(BlackKing);
+            expect(board.getPiece(6, 4)).toBeInstanceOf(WhitePawn); // e2
+        });
+    });
+
+    describe('Italian Game Opening', () => {
+        test('First 6 moves of Italian Game with move/undo validation', () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            const moves = [];
+
+            // 1. e4
+            moves.push(makeAndVerifyMove(board, 6, 4, 4, 4));
+            expect(board.getPiece(4, 4)).toBeInstanceOf(WhitePawn);
+
+            // 1... e5
+            moves.push(makeAndVerifyMove(board, 1, 4, 3, 4));
+            expect(board.getPiece(3, 4)).toBeInstanceOf(BlackPawn);
+
+            // 2. Nf3
+            moves.push(makeAndVerifyMove(board, 7, 6, 5, 5));
+            expect(board.getPiece(5, 5)).toBeInstanceOf(WhiteKnight);
+
+            // 2... Nc6
+            moves.push(makeAndVerifyMove(board, 0, 1, 2, 2));
+            expect(board.getPiece(2, 2)).toBeInstanceOf(BlackKnight);
+
+            // 3. Bc4
+            moves.push(makeAndVerifyMove(board, 7, 5, 4, 2));
+            expect(board.getPiece(4, 2)).toBeInstanceOf(WhiteBishop);
+
+            // 3... Bc5
+            moves.push(makeAndVerifyMove(board, 0, 5, 3, 2));
+            expect(board.getPiece(3, 2)).toBeInstanceOf(BlackBishop);
+
+            // Verify no check
+            expect(board.isKingInCheck(PlayerColor.WHITE)).toBe(false);
+            expect(board.isKingInCheck(PlayerColor.BLACK)).toBe(false);
+
+            // Verify piece counts
+            expect(board.whitePieces.length).toBe(16);
+            expect(board.blackPieces.length).toBe(16);
+
+            // Test undo sequence
+            for (let i = moves.length - 1; i >= 0; i--) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify board is back to starting position
+            expect(board.getPiece(7, 4)).toBeInstanceOf(WhiteKing);
+            expect(board.getPiece(0, 4)).toBeInstanceOf(BlackKing);
+            expect(board.getPiece(7, 6)).toBeInstanceOf(WhiteKnight);
+            expect(board.getPiece(0, 1)).toBeInstanceOf(BlackKnight);
+        });
+    });
+
+    describe('Complex Game with Special Moves', () => {
+        test('Game with castling, en passant, and captures', () => {
+            const board = createEmptyBoard();
+
+            // Setup a mid-game position
+            const whiteKing = placePieceAt(board, WhiteKing, 7, 4);
+            whiteKing.hasMoved = false;
+            const whiteRook = placePieceAt(board, WhiteRook, 7, 7);
+            whiteRook.hasMoved = false;
+
+            placePieceAt(board, BlackKing, 0, 4);
+            const whitePawn = placePieceAt(board, WhitePawn, 6, 4);
+            const blackPawn = placePieceAt(board, BlackPawn, 1, 5);
+
+            const moves = [];
+
+            // 1. White castles kingside
+            const castlingMove = Move.castling(7, 4, 7, 6, 7, 5);
+            board.makeMove(castlingMove);
+            moves.push(castlingMove);
+
+            expect(board.getPiece(7, 6)).toBe(whiteKing);
+            expect(board.getPiece(7, 5)).toBe(whiteRook);
+            expect(whiteKing.hasMoved).toBe(true);
+            expect(whiteRook.hasMoved).toBe(true);
+
+            // 2. Black pawn double push (sets up en passant)
+            const blackDoublePush = new Move(1, 5, 3, 5);
+            board.makeMove(blackDoublePush);
+            moves.push(blackDoublePush);
+
+            expect(board.enPassantTargetSquare).toEqual({ row: 2, col: 5 });
+
+            // 3. White pawn double push
+            const whiteDoublePush = new Move(6, 4, 4, 4);
+            board.makeMove(whiteDoublePush);
+            moves.push(whiteDoublePush);
+
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
+
+            // 4. Black pawn captures en passant
+            const enPassantMove = Move.enPassant(3, 5, 4, 4, 4, 4);
+            board.makeMove(enPassantMove);
+            moves.push(enPassantMove);
+
+            expect(board.getPiece(4, 4)).toBe(blackPawn);
+
+            // Undo all moves
+            for (let i = moves.length - 1; i >= 0; i--) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify everything is restored
+            expect(board.getPiece(7, 4)).toBe(whiteKing);
+            expect(board.getPiece(7, 7)).toBe(whiteRook);
+            expect(whiteKing.hasMoved).toBe(false);
+            expect(whiteRook.hasMoved).toBe(false);
+            expect(board.getPiece(6, 4)).toBe(whitePawn);
+            expect(board.getPiece(1, 5)).toBe(blackPawn);
+        });
+    });
+
+    describe('Long Game Sequence with Full Reversibility', () => {
+        test('15-move sequence with perfect undo', () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            const moves = [];
+
+            // Execute a series of moves
+            const moveSequence = [
+                [6, 4, 4, 4], // e4
+                [1, 4, 3, 4], // e5
+                [6, 3, 4, 3], // d4
+                [3, 4, 4, 3], // exd4
+                [7, 6, 5, 5], // Nf3
+                [0, 1, 2, 2], // Nc6
+                [7, 5, 4, 2], // Bc4
+                [0, 5, 3, 2], // Bc5
+                [6, 2, 4, 2], // c3
+                [4, 3, 4, 2], // dxc3 (capture)
+                [5, 5, 4, 3], // Nxc3 (recapture, knight takes pawn on c3)
+            ];
+
+            // Make each move and verify
+            for (const [fromRow, fromCol, toRow, toCol] of moveSequence) {
+                const piece = board.getPiece(fromRow, fromCol);
+                expect(piece).toBeTruthy();
+
+                const move = new Move(fromRow, fromCol, toRow, toCol);
+                const legalMove = board.getLegalMoveOrNull(piece, move);
+                expect(legalMove).toBeTruthy();
+
+                board.makeMove(legalMove);
+                moves.push(legalMove);
+
+                // Verify piece moved
+                expect(board.getPiece(toRow, toCol)).toBe(piece);
+            }
+
+            // Snapshot the final state
+            const knight = board.getPiece(4, 3);
+            expect(knight).toBeInstanceOf(WhiteKnight);
+
+            // Undo ALL moves
+            for (let i = moves.length - 1; i >= 0; i--) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify perfect restoration to starting position
+            // Check all starting pieces are in correct positions
+            expect(board.getPiece(7, 4)).toBeInstanceOf(WhiteKing);
+            expect(board.getPiece(0, 4)).toBeInstanceOf(BlackKing);
+            expect(board.getPiece(6, 4)).toBeInstanceOf(WhitePawn); // e2
+            expect(board.getPiece(1, 4)).toBeInstanceOf(BlackPawn); // e7
+            expect(board.getPiece(7, 6)).toBeInstanceOf(WhiteKnight); // g1
+            expect(board.getPiece(0, 1)).toBeInstanceOf(BlackKnight); // b8
+
+            // Verify piece counts
+            expect(board.whitePieces.length).toBe(16);
+            expect(board.blackPieces.length).toBe(16);
+
+            // Verify no hasMoved flags are set
+            expect(board.whiteKing.hasMoved).toBe(false);
+            expect(board.blackKing.hasMoved).toBe(false);
+        });
+    });
+
+    describe('Board State Integrity Tests', () => {
+        test('Piece position tracking remains consistent', () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            const moves = [];
+
+            // Make 10 random legal moves
+            for (let i = 0; i < 10; i++) {
+                const color = i % 2 === 0 ? PlayerColor.WHITE : PlayerColor.BLACK;
+                const legalMoves = board.getLegalMoves(color);
+
+                if (legalMoves.length === 0) break;
+
+                const randomMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+                board.makeMove(randomMove);
+                moves.push(randomMove);
+
+                // Verify piece position consistency
+                for (let row = 0; row < 8; row++) {
+                    for (let col = 0; col < 8; col++) {
+                        const piece = board.getPiece(row, col);
+                        if (piece) {
+                            expect(piece.row).toBe(row);
+                            expect(piece.col).toBe(col);
+                        }
+                    }
+                }
+            }
+
+            // Undo all moves
+            for (let i = moves.length - 1; i >= 0; i--) {
+                board.undoMove(moves[i]);
+            }
+
+            // Verify starting position
+            expect(board.getPiece(7, 4)).toBeInstanceOf(WhiteKing);
+            expect(board.getPiece(0, 4)).toBeInstanceOf(BlackKing);
+        });
+
+        test('En passant target square is properly managed', () => {
+            const board = new Board();
+            board.initializeBoard();
+
+            // Initial state: no en passant
+            expect(board.enPassantTargetSquare).toBeNull();
+
+            // White pawn double push
+            const move1 = new Move(6, 4, 4, 4);
+            board.makeMove(move1);
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
+
+            // Any other move clears it
+            const move2 = new Move(0, 1, 2, 2);
+            board.makeMove(move2);
+            expect(board.enPassantTargetSquare).toBeNull();
+
+            // Undo should restore en passant state
+            board.undoMove(move2);
+            expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
+
+            board.undoMove(move1);
+            expect(board.enPassantTargetSquare).toBeNull();
+        });
+    });
+});

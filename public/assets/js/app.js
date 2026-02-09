@@ -35,7 +35,7 @@ class AssetLoader {
 }
 
 AssetLoader.loadImages(IMAGES).then(images => {
-    let game = new Game(new Renderer(), images);
+    let game = new Game(new Renderer(images));
     game.start();
 });
 

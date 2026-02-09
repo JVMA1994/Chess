@@ -1,6 +1,6 @@
 class Piece {
-    constructor(img, color, row, col) {
-        this.image = img;
+    constructor(imgCode, color, row, col) {
+        this.imgCode = imgCode;
         this.color = color; // "white" | "black"
         this.row = row;
         this.col = col;
@@ -79,8 +79,8 @@ class King extends Piece {
 }
 
 class WhiteKing extends King {
-    constructor(img) {
-        super(img, PlayerColor.WHITE, 7, 4);
+    constructor() {
+        super(PIECE_CODES.WHITE.KING, PlayerColor.WHITE, 7, 4);
     }
 
     checkKingSideCastling(board){
@@ -138,8 +138,8 @@ class WhiteKing extends King {
 }
 
 class BlackKing extends King {
-    constructor(img) {
-        super(img, PlayerColor.BLACK, 0, 4);
+    constructor() {
+        super(PIECE_CODES.BLACK.KING, PlayerColor.BLACK, 0, 4);
     }
 
     checkKingSideCastling(board){
@@ -228,14 +228,14 @@ class Queen extends Piece {
 }
 
 class WhiteQueen extends Queen {
-    constructor(img) {
-        super(img, PlayerColor.WHITE, 7, 3);
+    constructor(col, row = 7) {
+        super(PIECE_CODES.WHITE.QUEEN, PlayerColor.WHITE, row, col);
     }
 }
 
 class BlackQueen extends Queen {
-    constructor(img) {
-        super(img, PlayerColor.BLACK, 0, 3);
+    constructor(col, row = 0) {
+        super(PIECE_CODES.BLACK.QUEEN, PlayerColor.BLACK, row, col);
     }
 }
 
@@ -274,14 +274,14 @@ class Rook extends Piece {
 }
 
 class WhiteRook extends Rook {
-    constructor(img, col) {
-        super(img, PlayerColor.WHITE, 7, col); // col: 0 or 7
+    constructor(col, row = 7) {
+        super(PIECE_CODES.WHITE.ROOK, PlayerColor.WHITE, row, col); // col: 0 or 7
     }
 }
 
 class BlackRook extends Rook {
-    constructor(img, col) {
-        super(img, PlayerColor.BLACK, 0, col); // col: 0 or 7
+    constructor(col, row = 0) {
+        super(PIECE_CODES.BLACK.ROOK, PlayerColor.BLACK, row, col); // col: 0 or 7
     }
 }
 
@@ -322,16 +322,16 @@ class Bishop extends Piece {
 }
 
 class WhiteBishop extends Bishop {
-    constructor(img, col) {
-        super(img, PlayerColor.WHITE, 7, col); // col: 2 or 5
+    constructor(col, row = 7) {
+        super(PIECE_CODES.WHITE.BISHOP, PlayerColor.WHITE, row, col); // col: 2 or 5
     }
 
 
 }
 
 class BlackBishop extends Bishop {
-    constructor(img, col) {
-        super(img, PlayerColor.BLACK, 0, col);
+    constructor(col, row = 0) {
+        super(PIECE_CODES.BLACK.BISHOP, PlayerColor.BLACK, row, col);
     }
 }
 
@@ -367,14 +367,14 @@ class Knight extends Piece {
 }
 
 class WhiteKnight extends Knight {
-    constructor(img, col) {
-        super(img, PlayerColor.WHITE, 7, col); // col: 1 or 6
+    constructor( col, row = 7) {
+        super(PIECE_CODES.WHITE.KNIGHT, PlayerColor.WHITE, row, col); // col: 1 or 6
     }
 }
 
 class BlackKnight extends Knight {
-    constructor(img, col) {
-        super(img, PlayerColor.BLACK, 0, col); // col: 1 or 6
+    constructor( col, row = 0) {
+        super(PIECE_CODES.BLACK.KNIGHT, PlayerColor.BLACK, row, col); // col: 1 or 6
     }
 }
 
@@ -384,8 +384,8 @@ class Pawn extends Piece {
     }
 }
 class WhitePawn extends Pawn {
-    constructor(img, col) {
-        super(img, 6, col, PlayerColor.WHITE); // col: 0–7
+    constructor(col) {
+        super(PIECE_CODES.WHITE.PAWN, 6, col, PlayerColor.WHITE); // col: 0–7
     }
 
     /**
@@ -432,32 +432,31 @@ class WhitePawn extends Pawn {
     }
 
     getPseudoLegalMoves(board) {
-        let direction = [[-1, 0], [-2, 0], [-1, -1], [-1, 1]];
-        let moves = [];
+        const lastRank = 0; //0th row is the last rank for the White Pawn
+        const direction = [[-1, 0], [-2, 0], [-1, -1], [-1, 1]];
+        const moves = [];
         direction
             .forEach(dir => {
-                if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                    moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
+                const targetRow = this.row + dir[0];
+                const targetCol = this.col + dir[1];
+                if (this.isValidMove(board, targetRow, targetCol)) {
+                    if(targetRow === lastRank)
+                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                    else
+                        moves.push(new Move(this.row, this.col, targetRow, targetCol));
+                }
+                if(Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol){
+                    moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
                 }
             });
-        let diagonalSquares = [[-1, -1], [-1, 1]];
-
-        if(board.enPassantTargetSquare){
-            diagonalSquares
-                .forEach(dir => {
-                    if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
-                        moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
-                    }
-                })
-        }
 
         return moves;
     }
 }
 
 class BlackPawn extends Pawn {
-    constructor(img, col) {
-        super(img, 1, col, PlayerColor.BLACK); // col: 0–7
+    constructor(col) {
+        super(PIECE_CODES.BLACK.PAWN, 1, col, PlayerColor.BLACK); // col: 0–7
     }
 
     /**
@@ -503,25 +502,23 @@ class BlackPawn extends Pawn {
 
 
     getPseudoLegalMoves(board) {
-        let direction = [[1, 0], [2, 0], [1, -1], [1, 1]];
-        let moves = [];
+        const lastRank = 7; //7th row is the last rank for the Black Pawn
+        const direction = [[1, 0], [2, 0], [1, -1], [1, 1]];
+        const moves = [];
         direction
             .forEach(dir => {
-                if (this.isValidMove(board, this.row + dir[0], this.col + dir[1])) {
-                    moves.push(new Move(this.row, this.col, this.row + dir[0], this.col + dir[1]));
+                const targetRow = this.row + dir[0];
+                const targetCol = this.col + dir[1];
+                if (this.isValidMove(board, targetRow, targetCol)) {
+                    if(targetRow === lastRank)
+                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                    else
+                        moves.push(new Move(this.row, this.col, targetRow, targetCol));
+                }
+                if(Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol){
+                    moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
                 }
             });
-
-        let diagonalSquares = [[1, -1], [1, 1]];
-
-        if(board.enPassantTargetSquare){
-            diagonalSquares
-                .forEach(dir => {
-                    if (board.enPassantTargetSquare.row === this.row + dir[0] && board.enPassantTargetSquare.col === this.col + dir[1]) {
-                        moves.push(Move.enPassant(this.row, this.col, this.row + dir[0], this.col + dir[1], this.row, this.col + dir[1]));
-                    }
-                })
-        }
 
         return moves;
     }
