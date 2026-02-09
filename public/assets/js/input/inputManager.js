@@ -1,62 +1,58 @@
 class InputManager {
     constructor(game) {
         this.game = game;
-
-        // Bind once
-        this.onMenuClick = this.onMenuClick.bind(this);
-        this.onMenuMouseMove = this.onMenuMouseMove.bind(this);
-
-        this.onGameMouseDown = this.onGameMouseDown.bind(this);
-        this.onGameMouseMove = this.onGameMouseMove.bind(this);
-        this.onGameMouseUp = this.onGameMouseUp.bind(this);
     }
 
-    // -------- MENU ROUTERS --------
-    onMenuClick(e) {
-        this.game.activeMenu?.handleClick(e);
+    addEventListeners(){
+        canvas.addEventListener('mousedown', e => this.#onMouseDown(e));
+        canvas.addEventListener('mousemove', e => this.#onMouseMove(e));
+        canvas.addEventListener('mouseup',   e => this.#onMouseUp(e));
+        canvas.addEventListener('click',     e => this.#onClick(e));
     }
 
-    onMenuMouseMove(e) {
-        this.game.activeMenu?.handleMouseMove?.(e);
-    }
-
-    activateMenuControllers() {
-        canvas.addEventListener("click", this.onMenuClick);
-        canvas.addEventListener("mousemove", this.onMenuMouseMove);
-    }
-
-    deactivateMenuControllers() {
-        canvas.removeEventListener("click", this.onMenuClick);
-        canvas.removeEventListener("mousemove", this.onMenuMouseMove);
-    }
-
-    //-------- GAME CONTROLLERS --------
-
-    onGameMouseDown(e){
-        if(this.game.phase === GameState.WHITE_TURN || this.game.phase === GameState.BLACK_TURN)
+    #onMouseDown(e) {
+        if (this.#isGamePhase())
             this.game.handleMouseDown(e);
     }
 
-    onGameMouseMove(e) {
-        if(this.game.phase === GameState.WHITE_TURN || this.game.phase === GameState.BLACK_TURN)
+    #onMouseMove(e) {
+        if (this.#isPromotionPhase() || this.#isMenuPhase())
+            this.game.activeMenu?.handleMouseMove(e);
+        else
             this.game.handleMouseMove(e);
     }
 
-    onGameMouseUp(e){
-        if(this.game.phase === GameState.WHITE_TURN || this.game.phase === GameState.BLACK_TURN)
+    #onMouseUp(e) {
+        if (this.#isGamePhase())
             this.game.handleMouseUp(e);
     }
 
-    activateGameControllers() {
-        canvas.addEventListener("mousedown", this.onGameMouseDown);
-        canvas.addEventListener("mousemove", this.onGameMouseMove);
-        canvas.addEventListener("mouseup", this.onGameMouseUp);
+    #onClick(e) {
+        if (this.#isPromotionPhase() || this.#isMenuPhase())
+            this.game.activeMenu?.handleClick(e);
     }
 
-    deactivateGameControllers() {
-        canvas.removeEventListener("mousedown", this.onGameMouseDown);
-        canvas.removeEventListener("mousemove", this.onGameMouseMove);
-        canvas.removeEventListener("mouseup", this.onGameMouseUp);
+    #isGamePhase() {
+        return (
+            this.game.phase === GameState.WHITE_TURN ||
+            this.game.phase === GameState.BLACK_TURN
+        );
+    }
+
+    #isPromotionPhase() {
+        return (
+            this.game.phase === GameState.WHITE_PROMOTING ||
+            this.game.phase === GameState.BLACK_PROMOTING
+        );
+    }
+
+    #isMenuPhase() {
+        return (
+            this.game.phase === GameState.NOT_STARTED ||
+                this.game.phase === GameState.CHECKMATE_BLACK_WINS ||
+                this.game.phase === GameState.CHECKMATE_WHITE_WINS ||
+                this.game.phase === GameState.STALEMATE
+        );
     }
 
 }
