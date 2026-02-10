@@ -7,7 +7,6 @@ class Board {
         this.whiteKing = null
         this.legalMovesForAPieceCache = new Map();
         this.enPassantTargetSquare = null
-        this.previousEnPassantTargetSquare = null
     }
 
     placePiece(piece) {
@@ -161,6 +160,9 @@ class Board {
             this.boardArr[piece.row][move.rookToCol] = rook;
             move.prevRookHasMoved = rook.hasMoved;
             rook.hasMoved = true;
+            // Fix: Update rook coordinates
+            rook.row = piece.row;
+            rook.col = move.rookToCol;
         }
 
         if (move.isEnPassant) {
@@ -191,13 +193,6 @@ class Board {
             // Replace pawn with promoted piece
             this.boardArr[move.toRow][move.toCol] = promotedPiece;
 
-            // Update piece lists
-            const pieceList = piece.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
-            const pawnIndex = pieceList.indexOf(piece);
-            if (pawnIndex !== -1) {
-                pieceList.splice(pawnIndex, 1);
-            }
-            pieceList.push(promotedPiece);
         }
     }
 
@@ -219,6 +214,9 @@ class Board {
             this.boardArr[move.toRow][move.rookToCol] = null;
             this.boardArr[move.fromRow][move.rookFromCol] = rook;
             rook.hasMoved = move.prevRookHasMoved;
+            // Fix: Restore rook coordinates
+            rook.row = move.fromRow;
+            rook.col = move.rookFromCol;
         }
 
         if (move.isEnPassant) {
@@ -231,14 +229,9 @@ class Board {
             // Remove promoted piece from board
             const promotedPiece = this.boardArr[move.fromRow][move.fromCol];
             this.boardArr[move.fromRow][move.fromCol] = move.originalPawn;
-
-            // Update piece lists
-            const pieceList = move.originalPawn.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
-            const promotedIndex = pieceList.indexOf(promotedPiece);
-            if (promotedIndex !== -1) {
-                pieceList.splice(promotedIndex, 1);
-            }
-            pieceList.push(move.originalPawn);
+            // Fix: Restore original pawn coordinates
+            move.originalPawn.row = move.fromRow;
+            move.originalPawn.col = move.fromCol;
 
             // Restore captured piece if any
             this.boardArr[move.toRow][move.toCol] = move.captured;
@@ -411,4 +404,62 @@ class Board {
         return this.legalMovesForAPieceCache.get(piece);
     }
 
+    evaluateBoard(perspectiveColor) {
+        let score = 0;
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.boardArr[row][col];
+                if (!piece) continue;
+
+                const material = PIECE_VALUE.get(piece.constructor);
+                const positional = getPSTValue(piece, row, col);
+
+                const total = material + positional;
+
+                if (piece.color === perspectiveColor)
+                    score += total;
+                else
+                    score -= total;
+            }
+        }
+
+        return score;
+    }
+
 }
+
+const PIECE_VALUE = new Map([
+    [WhitePawn, 100],
+    [BlackPawn, 100],
+    [WhiteKnight, 320],
+    [BlackKnight, 320],
+    [WhiteBishop, 330],
+    [BlackBishop, 330],
+    [WhiteRook, 500],
+    [BlackRook, 500],
+    [WhiteQueen, 900],
+    [BlackQueen, 900],
+    [WhiteKing, 20000],
+    [BlackKing, 20000],
+]);
+
+const PST = new Map([
+    [WhitePawn,   PST_TABLES["PAWN"]],
+    [BlackPawn,   PST_TABLES["PAWN"]],
+
+    [WhiteKnight, PST_TABLES["KNIGHT"]],
+    [BlackKnight, PST_TABLES["KNIGHT"]],
+
+    [WhiteBishop, PST_TABLES["BISHOP"]],
+    [BlackBishop, PST_TABLES["BISHOP"]],
+
+    [WhiteRook,   PST_TABLES["ROOK"]],
+    [BlackRook,   PST_TABLES["ROOK"]],
+
+    [WhiteQueen,  PST_TABLES["QUEEN"]],
+    [BlackQueen,  PST_TABLES["QUEEN"]],
+
+    [WhiteKing,   PST_TABLES["KING"]],
+    [BlackKing,   PST_TABLES["KING"]],
+]);

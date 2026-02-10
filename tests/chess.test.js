@@ -33,7 +33,8 @@ const {
     BlackKnight,
     Pawn,
     WhitePawn,
-    BlackPawn
+    BlackPawn,
+    PromotionType
 } = require('./chess-module');
 
 // ============================================================================
@@ -1843,6 +1844,31 @@ describe('Pawn Promotion', () => {
                 expect(promotionMove).toBeDefined();
             }
         });
+
+        test('Undo promotion restores original pawn coordinates', () => {
+            const board = createEmptyBoard();
+
+            // White Pawn at 1,0 (rank 7) moving to 0,0 (rank 8)
+            const whitePawn = placePieceAt(board, WhitePawn, 1, 0);
+
+            // Perform promotion move
+            const promotionMove = Move.promotion(1, 0, 0, 0, PromotionType.QUEEN);
+            board.makeMove(promotionMove);
+
+            // Verify promotion
+            expect(board.getPiece(0, 0)).toBeInstanceOf(WhiteQueen);
+            expect(whitePawn.row).toBe(0);
+            expect(whitePawn.col).toBe(0);
+
+            // Undo
+            board.undoMove(promotionMove);
+
+            // Verify pawn is back
+            expect(board.getPiece(1, 0)).toBe(whitePawn);
+            // Verify coordinates restored
+            expect(whitePawn.row).toBe(1);
+            expect(whitePawn.col).toBe(0);
+        });
     });
 });
 
@@ -2085,11 +2111,13 @@ describe('Full Game Simulations', () => {
             expect(board.enPassantTargetSquare).toEqual({ row: 5, col: 4 });
 
             // 4. Black pawn captures en passant
-            const enPassantMove = Move.enPassant(3, 5, 4, 4, 4, 4);
+            // Destination is 5, 4 (one square behind the captured pawn at 4, 4)
+            const enPassantMove = Move.enPassant(3, 5, 5, 4, 4, 4);
             board.makeMove(enPassantMove);
             moves.push(enPassantMove);
 
-            expect(board.getPiece(4, 4)).toBe(blackPawn);
+            // Black pawn should be at 5, 4
+            expect(board.getPiece(5, 4)).toBe(blackPawn);
 
             // Undo all moves
             for (let i = moves.length - 1; i >= 0; i--) {
@@ -2123,9 +2151,9 @@ describe('Full Game Simulations', () => {
                 [0, 1, 2, 2], // Nc6
                 [7, 5, 4, 2], // Bc4
                 [0, 5, 3, 2], // Bc5
-                [6, 2, 4, 2], // c3
-                [4, 3, 4, 2], // dxc3 (capture)
-                [5, 5, 4, 3], // Nxc3 (recapture, knight takes pawn on c3)
+                [6, 2, 5, 2], // c3
+                [4, 3, 5, 2], // dxc3 (capture)
+                [5, 5, 4, 3], // Nxd4 (move to empty square)
             ];
 
             // Make each move and verify

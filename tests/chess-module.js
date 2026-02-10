@@ -53,6 +53,83 @@ const BISHOP_DIRS = [
     [-1, -1], [-1, 1], [1, -1], [1, 1]
 ];
 
+const PromotionType = Object.freeze({
+    QUEEN: 'QUEEN',
+    ROOK: 'ROOK',
+    BISHOP: 'BISHOP',
+    KNIGHT: 'KNIGHT'
+});
+
+const PST_TABLES = {
+
+    PAWN: [
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [50, 50, 50, 50, 50, 50, 50, 50],
+        [10, 10, 20, 30, 30, 20, 10, 10],
+        [5, 5, 10, 25, 25, 10, 5, 5],
+        [0, 0, 0, 20, 20, 0, 0, 0],
+        [5, -5, -10, 0, 0, -10, -5, 5],
+        [5, 10, 10, -20, -20, 10, 10, 5],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ],
+
+    KNIGHT: [
+        [-50, -40, -30, -30, -30, -30, -40, -50],
+        [-40, -20, 0, 0, 0, 0, -20, -40],
+        [-30, 0, 10, 15, 15, 10, 0, -30],
+        [-30, 5, 15, 20, 20, 15, 5, -30],
+        [-30, 0, 15, 20, 20, 15, 0, -30],
+        [-30, 5, 10, 15, 15, 10, 5, -30],
+        [-40, -20, 0, 5, 5, 0, -20, -40],
+        [-50, -40, -30, -30, -30, -30, -40, -50],
+    ],
+
+    BISHOP: [
+        [-20, -10, -10, -10, -10, -10, -10, -20],
+        [-10, 5, 0, 0, 0, 0, 5, -10],
+        [-10, 10, 10, 10, 10, 10, 10, -10],
+        [-10, 0, 10, 10, 10, 10, 0, -10],
+        [-10, 5, 5, 10, 10, 5, 5, -10],
+        [-10, 0, 5, 10, 10, 5, 0, -10],
+        [-10, 0, 0, 0, 0, 0, 0, -10],
+        [-20, -10, -10, -10, -10, -10, -10, -20],
+    ],
+
+    ROOK: [
+        [0, 0, 5, 10, 10, 5, 0, 0],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [-5, 0, 0, 0, 0, 0, 0, -5],
+        [5, 10, 10, 10, 10, 10, 10, 5],
+        [0, 0, 0, 0, 0, 0, 0, 0],
+    ],
+
+    QUEEN: [
+        [-20, -10, -10, -5, -5, -10, -10, -20],
+        [-10, 0, 0, 0, 0, 0, 0, -10],
+        [-10, 0, 5, 5, 5, 5, 0, -10],
+        [-5, 0, 5, 5, 5, 5, 0, -5],
+        [0, 0, 5, 5, 5, 5, 0, -5],
+        [-10, 5, 5, 5, 5, 5, 0, -10],
+        [-10, 0, 5, 0, 0, 0, 0, -10],
+        [-20, -10, -10, -5, -5, -10, -10, -20],
+    ],
+
+    KING: [
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-30, -40, -40, -50, -50, -40, -40, -30],
+        [-20, -30, -30, -40, -40, -30, -30, -20],
+        [-10, -20, -20, -20, -20, -20, -20, -10],
+        [20, 20, 0, 0, 0, 0, 20, 20],
+        [20, 30, 10, 0, 0, 10, 30, 20],
+    ]
+
+};
+
 // Move class
 class Move {
     constructor(fromRow, fromCol, toRow, toCol) {
@@ -167,8 +244,13 @@ class WhiteKing extends King {
 
     checkKingSideCastling(board) {
         const rook = board.getPiece(7, 7);
+        // console.log('checkKingSideCastling: rook at 7,7 is', rook);
         if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
             return false;
+
+        console.log('checkKingSideCastling: Rook check PASSED! This should NOT happen if empty.');
+        console.log('Rook details:', rook.color, rook.row, rook.col, rook.hasMoved);
+
         const f1 = board.getPiece(7, 5);
         const g1 = board.getPiece(7, 6);
         if (f1 || g1)
@@ -524,6 +606,41 @@ class BlackPawn extends Pawn {
     }
 }
 
+const PIECE_VALUE = new Map([
+    [WhitePawn, 100],
+    [BlackPawn, 100],
+    [WhiteKnight, 320],
+    [BlackKnight, 320],
+    [WhiteBishop, 330],
+    [BlackBishop, 330],
+    [WhiteRook, 500],
+    [BlackRook, 500],
+    [WhiteQueen, 900],
+    [BlackQueen, 900],
+    [WhiteKing, 20000],
+    [BlackKing, 20000],
+]);
+
+const PST = new Map([
+    [WhitePawn, PST_TABLES["PAWN"]],
+    [BlackPawn, PST_TABLES["PAWN"]],
+
+    [WhiteKnight, PST_TABLES["KNIGHT"]],
+    [BlackKnight, PST_TABLES["KNIGHT"]],
+
+    [WhiteBishop, PST_TABLES["BISHOP"]],
+    [BlackBishop, PST_TABLES["BISHOP"]],
+
+    [WhiteRook, PST_TABLES["ROOK"]],
+    [BlackRook, PST_TABLES["ROOK"]],
+
+    [WhiteQueen, PST_TABLES["QUEEN"]],
+    [BlackQueen, PST_TABLES["QUEEN"]],
+
+    [WhiteKing, PST_TABLES["KING"]],
+    [BlackKing, PST_TABLES["KING"]],
+]);
+
 // Board class
 class Board {
     constructor() {
@@ -662,11 +779,16 @@ class Board {
         piece.hasMoved = true;
 
         if (move.isCastling) {
+            // console.log('makeMove: Castling!', move);
             const rook = this.boardArr[move.fromRow][move.rookFromCol];
+            // console.log('makeMove: Rook found?', rook);
             this.boardArr[piece.row][move.rookFromCol] = null;
             this.boardArr[piece.row][move.rookToCol] = rook;
             move.prevRookHasMoved = rook.hasMoved;
             rook.hasMoved = true;
+            // Fix: Update rook coordinates
+            rook.row = piece.row;
+            rook.col = move.rookToCol;
         }
 
         if (move.isEnPassant) {
@@ -721,6 +843,9 @@ class Board {
             this.boardArr[move.toRow][move.rookToCol] = null;
             this.boardArr[move.fromRow][move.rookFromCol] = rook;
             rook.hasMoved = move.prevRookHasMoved;
+            // Fix: Restore rook coordinates
+            rook.row = move.fromRow;
+            rook.col = move.rookFromCol;
         }
         if (move.isEnPassant) {
             this.boardArr[move.toRow][move.toCol] = null;
@@ -732,6 +857,9 @@ class Board {
             // Remove promoted piece from board
             const promotedPiece = this.boardArr[move.fromRow][move.fromCol];
             this.boardArr[move.fromRow][move.fromCol] = move.originalPawn;
+            // Fix: Restore original pawn coordinates
+            move.originalPawn.row = move.fromRow;
+            move.originalPawn.col = move.fromCol;
 
             // Update piece lists
             const pieceList = move.originalPawn.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
@@ -865,6 +993,180 @@ class Board {
     getCachedMoves(piece) {
         return this.legalMovesForAPieceCache.get(piece);
     }
+
+    evaluateBoard(perspectiveColor) {
+        let score = 0;
+
+        for (let row = 0; row < 8; row++) {
+            for (let col = 0; col < 8; col++) {
+                const piece = this.boardArr[row][col];
+                if (!piece) continue;
+
+                const material = PIECE_VALUE.get(piece.constructor);
+                const positional = getPSTValue(piece, row, col);
+
+                const total = material + positional;
+
+                if (piece.color === perspectiveColor)
+                    score += total;
+                else
+                    score -= total;
+            }
+        }
+
+        return score;
+    }
+}
+
+function findBestMove(board, aiColor, depth) {
+    const moves = board.getLegalMoves(aiColor);
+
+    let bestScore = -Infinity;
+    let bestMove = null;
+
+    let alpha = -Infinity;
+    let beta = Infinity;
+
+    for (const move of moves) {
+        board.makeMove(move);
+
+        const score = minimax(
+            board,
+            depth - 1,
+            alpha,
+            beta,
+            false,
+            aiColor
+        );
+
+        board.undoMove(move);
+
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+        }
+
+        alpha = Math.max(alpha, bestScore);
+    }
+
+    return bestMove;
+}
+
+function getOpponentColor(colorToMove) {
+    return PlayerColor.WHITE === colorToMove ? PlayerColor.BLACK : PlayerColor.WHITE;
+}
+
+function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
+    if (depth === 0) {
+        return board.evaluateBoard(perspectiveColor);
+    }
+
+    const colorToMove = isMaximizing
+        ? perspectiveColor
+        : (perspectiveColor === PlayerColor.WHITE
+            ? PlayerColor.BLACK
+            : PlayerColor.WHITE);
+
+    const moves = board.getLegalMoves(colorToMove);
+    // Removed 'this.' from scoreMove calls
+    moves.sort((a, b) => scoreMove(b, board, getOpponentColor(colorToMove)) - scoreMove(a, board, getOpponentColor(colorToMove)));
+
+    if (moves.length === 0) {
+        return board.evaluateBoard(perspectiveColor);
+    }
+
+    if (isMaximizing) {
+        let best = -Infinity;
+
+        for (const move of moves) {
+            board.makeMove(move);
+
+            const score = minimax(
+                board,
+                depth - 1,
+                alpha,
+                beta,
+                false,
+                perspectiveColor
+            );
+
+            board.undoMove(move);
+
+            best = Math.max(best, score);
+            if (best >= beta) break;
+            alpha = Math.max(alpha, best);
+        }
+
+        return best;
+
+    } else {
+        let best = Infinity;
+
+        for (const move of moves) {
+            board.makeMove(move);
+
+            const score = minimax(
+                board,
+                depth - 1,
+                alpha,
+                beta,
+                true,
+                perspectiveColor
+            );
+
+            board.undoMove(move);
+
+            best = Math.min(best, score);
+            if (best <= alpha) break;
+            beta = Math.min(beta, best);
+        }
+
+        return best;
+    }
+}
+
+function getPSTValue(piece, row, col) {
+    const table = PST.get(piece.constructor);
+    if (!table) return 0;
+
+    // White uses table as-is
+    if (piece.color === PlayerColor.WHITE) {
+        return table[row][col];
+    }
+
+    // Black is mirrored vertically
+    return table[7 - row][col];
+}
+
+function scoreMove(move, board, color) {
+    let score = 0;
+
+    const attacker = board.boardArr[move.fromRow][move.fromCol];
+    const victim = move.captured;
+
+    // 1. Captures — MVV LVA (Most Valuable Victim, Least Valuable Attacker)
+    if (victim) {
+        const victimValue = PIECE_VALUE.get(victim.constructor);
+        const attackerValue = PIECE_VALUE.get(attacker.constructor);
+        score += 10 * victimValue - attackerValue;
+    }
+
+    // 2. Promotion
+    if (move.isPromotion) {
+        score += 9000;
+    }
+
+    // 3. Check (very powerful for pruning)
+    if (board.isKingInCheck(color)) {
+        score += 500;
+    }
+
+    // 4. PST improvement for quiet moves
+    const fromPST = getPSTValue(attacker, move.fromRow, move.fromCol);
+    const toPST = getPSTValue(attacker, move.toRow, move.toCol);
+    score += (toPST - fromPST);
+
+    return score;
 }
 
 // Export for testing
@@ -895,5 +1197,10 @@ module.exports = {
     KNIGHT_OFFSETS,
     KING_OFFSETS,
     ROOK_DIRS,
-    BISHOP_DIRS
+    BISHOP_DIRS,
+    PromotionType,
+    findBestMove,
+    minimax,
+    scoreMove,
+    evaluateBoard: Board.prototype.evaluateBoard // Optional expose if needed, but it's on Board prototype
 };

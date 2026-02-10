@@ -73,6 +73,13 @@ class Game extends EventEmitter {
 
     switchTurn() {
         this.phase = this.phase === GameState.WHITE_TURN || this.phase === GameState.WHITE_PROMOTING ? GameState.BLACK_TURN : GameState.WHITE_TURN;
+        if (this.phase === GameState.BLACK_TURN) {
+            setTimeout(() => {
+                const bestMove = findBestMove(this.board, PlayerColor.BLACK, 4);
+                const piece = this.board.boardArr[bestMove.fromRow][bestMove.fromCol];
+                this.#executeLegalMove(bestMove, piece);
+            }, 200);
+        }
     }
 
     isGameOver() {
