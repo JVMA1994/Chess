@@ -31,9 +31,11 @@ function findBestMove(board, aiColor, depth) {
 
     return bestMove;
 }
-function getOpponentColor(colorToMove){
+
+function getOpponentColor(colorToMove) {
     return PlayerColor.WHITE === colorToMove ? PlayerColor.BLACK : PlayerColor.WHITE;
 }
+
 function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
     if (depth === 0) {
         return board.evaluateBoard(perspectiveColor);
@@ -55,7 +57,7 @@ function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
     if (isMaximizing) {
         let best = -Infinity;
 
-        for (const move  of moves) {
+        for (const move of moves) {
             board.makeMove(move);
 
             const score = minimax(
@@ -70,7 +72,7 @@ function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
             board.undoMove(move);
 
             best = Math.max(best, score);
-            if(best >= beta) break;
+            if (best >= beta) break;
             alpha = Math.max(alpha, best);
         }
 
@@ -79,7 +81,7 @@ function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
     } else {
         let best = Infinity;
 
-        for (const move  of moves) {
+        for (const move of moves) {
             board.makeMove(move);
 
             const score = minimax(
@@ -119,7 +121,7 @@ function scoreMove(move, board, color) {
     let score = 0;
 
     const attacker = board.boardArr[move.fromRow][move.fromCol];
-    const victim   = move.captured;
+    const victim = move.captured;
 
     // 1. Captures — MVV LVA (Most Valuable Victim, Least Valuable Attacker)
     if (victim) {
@@ -140,7 +142,7 @@ function scoreMove(move, board, color) {
 
     // 4. PST improvement for quiet moves
     const fromPST = getPSTValue(attacker, move.fromRow, move.fromCol);
-    const toPST   = getPSTValue(attacker, move.toRow, move.toCol);
+    const toPST = getPSTValue(attacker, move.toRow, move.toCol);
     score += (toPST - fromPST);
 
     return score;

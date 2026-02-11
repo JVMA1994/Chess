@@ -1,38 +1,69 @@
-# Chess Game Engine
+# JS Chess Engine
 
-A JavaScript-based Chess engine with AI, featuring move validation, special moves (Castling, En Passant, Promotion), and a minimax-based AI.
+A robust, JavaScript-based Chess engine featuring a custom AI, complete rules implementation, and a Canvas-based user interface.
 
-## Features
+## 🌟 Features
 
-### Core Game Logic
-*   **Move Validation:** Full support for legal chess moves.
-*   **Special Moves:**
-    *   **Castling:** King-side and Queen-side castling.
-    *   **En Passant:** Capture logic for pawns.
-    *   **Promotion:** Pawn promotion to Queen, Rook, Bishop, or Knight.
-*   **Game States:** Detection of Checkmate, Stalemate, and Draws.
+### 🧠 Artificial Intelligence
+ The engine uses a **Minimax algorithm with Alpha-Beta Pruning** to search for the best moves. It includes several optimizations to play competitively:
+*   **Move Ordering**: enhancing pruning efficiency by prioritizing:
+    *   Captures (MVV-LVA: Most Valuable Victim, Least Valuable Attacker)
+    *   Promotions
+    *   Checks
+    *   Positional improvements (PST)
+*   **Sophisticated Evaluation**:
+    *   **Material**: Standard piece values.
+    *   **Piece-Square Tables (PST)**: Context-aware piece placement scoring.
+    *   **Positional Terms**:
+        *   **Pawn Structure**: Penalties for isolated/doubled pawns, and **quadratic bonuses** for pushing passed pawns.
+        *   **King Safety**: Penalties for open files near the king and bonuses for pawn shields.
+    *   **Incremental Evaluation**: Efficient score updates ($O(1)$) during search.
 
-### Artificial Intelligence
-The AI uses a **Minimax Algorithm** with **Alpha-Beta Pruning** to determine the best move.
+### ♟️ Core Game Mechanics
+*   **Move Validation**: Complete strict move generation including pins and checks.
+*   **Special Moves**:
+    *   **Castling**: Logic for King-side and Queen-side castling.
+    *   **En Passant**: Correct capture handling.
+    *   **Promotion**: Menu selection (UI).
+*   **End Game Detection**: Checkmate, Stalemate, and Draw conditions.
 
-*   **Scoring System:**
-    *   **Material Value:** Pieces are weighted (Pawn: 100, Knight: 320, Bishop: 330, Rook: 500, Queen: 900, King: 20000).
-    *   **Piece-Square Tables (PST):** Positional bonuses encourage controlling the center and developing pieces (e.g., Knights in the center are worth more).
-*   **Move Ordering:** Prioritizes captures, promotions, and checks to improve pruning efficiency.
+### 🎨 User Interface
+*   **Canvas Rendering**: Smooth, responsive chessboard drawn on HTML5 Canvas.
+*   **Visual Aids**:
+    *   **Last Move Highlight**: Yellow highlight for the squares involved in the most recent move.
+    *   **Check Indicator**: Red highlight for the King when in check.
+    *   **Valid Move Hints**: Dots showing where a selected piece can move.
+*   **Menus**: Start menu, Pause/Resume, and Game Over modals.
 
-## Code Structure
+## 🛠️ Code Structure
 
-*   `public/assets/js/core/board.js`: Manages the board state, piece placement, and move execution (`makeMove`, `undoMove`).
-*   `public/assets/js/core/chessAI.js`: AI logic including `findBestMove` and `minimax`.
-*   `public/assets/js/util/constants.js`: Game constants, piece values, and PST definitions.
+*   `public/assets/js/core/`
+    *   **`board.js`**: The heart of the engine. Manages state, move generation (`getLegalMoves`), incremental hashing/evaluation, and applies moves.
+    *   **`chessAI.js`**: Contains the `findBestMove` function and the Minimax/Alpha-Beta search logic.
+    *   **`game.js`**: Orchestrates the game loop, handles input events, and manages UI interaction.
+    *   **`piece.js`**: Classes for each Piece type (`Rook`, `Knight`, etc.) defining movement rules.
+    *   **`move.js`**: Data structure representing a chess move.
+    *   **`zobrist.js`**: Implements Zobrist Hashing for efficient board state identification (prepared for Transposition Tables).
+    *   **`tt.js`**: Transposition Table implementation (AI cache).
+*   `public/assets/js/ui/`
+    *   **`renderer.js`**: Handles all drawing operations on the Canvas.
+    *   **`menu.js`**: Manages UI overlays and buttons.
 
-## Recent Fixes
-*   **Castling Bug:** Fixed a crash where the Rook's internal coordinates were not updated during castling, causing the AI to fail.
-*   **Promotion Undo:** Fixed an issue where undoing a promotion did not correctly restore the original pawn's position.
+## 🚀 How to Run
 
-## Future Enhancements
-*   **Opening Book:** Integrate an opening book to improve early-game play and reduce calculation time.
-*   **Transposition Table:** Cache board states to avoid re-evaluating positions reached via different move orders.
-*   **Quiescence Search:** Extend search at leaf nodes to resolve unstable positions (e.g., capture chains) to prevent the "horizon effect".
-*   **Iterative Deepening:** Use iterative deepening to manage time constraints effectively.
-*   **UI Improvements:** Add visual indicators for the last move, valid moves, and checked king.
+1.  Clone the repository.
+2.  Open `index.html` in any modern web browser.
+3.  Play against the AI!
+
+## 🎮 Controls
+
+*   **Click & Drag**: Move pieces.
+*   **Click**: Select a piece to see valid moves.
+*   **Menus**: Use on-screen buttons to Reset or Resume.
+
+## 🔮 Future Improvements
+
+*   **Transposition Table**: Fully integrate the implemented TT into the search to handle transpositions.
+*   **Quiescence Search**: Fix horizon effects by searching dynamic capture chains at depth limits.
+*   **Iterative Deepening**: Implement time management for the AI.
+*   **Fix**: Promotion logic for AI.
