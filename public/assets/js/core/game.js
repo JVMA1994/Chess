@@ -58,16 +58,14 @@ class Game extends EventEmitter {
 
     start() {
         this.activeMenu.draw();
-        this.inputManager.activateMenuControllers();
+        this.inputManager.addEventListeners();
     }
 
     startNewGame() {
         this.phase = GameState.SETUP;
         this.board = new Board();
-        this.inputManager.deactivateMenuControllers();
         this.board.initializeBoard();
         this.renderer.drawBoard(this.board);
-        this.inputManager.activateGameControllers();
         this.phase = GameState.WHITE_TURN;
     }
 
@@ -158,7 +156,6 @@ class Game extends EventEmitter {
         this.activeMenu = null;
         const promotedPiece = this.#createPromotedPiece(selectedType, promotingPawn.color, promotingPawn.row, promotingPawn.col);
         this.board.placePiece(promotedPiece);
-        this.inputManager.deactivateMenuControllers();
         const gameState = this.board.evaluateGameState(this.#getOpponentColor(promotingPawn.color));
         if (gameState === GameState.CONTINUE) {
             this.switchTurn();
@@ -166,7 +163,6 @@ class Game extends EventEmitter {
             this.#handleGameEnd(gameState);
         }
         this.renderer.drawBoard(this.board);
-        this.inputManager.activateGameControllers();
     }
 
     #executeLegalMove(move, piece) {
@@ -175,13 +171,11 @@ class Game extends EventEmitter {
         this.board.evictLegalMovesCache();
 
         if (move.isPromotion) {
-            this.inputManager.deactivateGameControllers();
             this.activeMenu = new PromotionMenu({
                 game: this,
                 pawn: piece
             });
             this.activeMenu.draw();
-            this.inputManager.activateMenuControllers();
             setTimeout(() => {
                 this.phase = PlayerColor.WHITE === piece.color ? GameState.WHITE_PROMOTING : GameState.BLACK_PROMOTING;
             }, 0);
@@ -203,9 +197,7 @@ class Game extends EventEmitter {
     #handleGameEnd(gameState) {
         this.phase = gameState;
         this.activeMenu = this.resetMenu;
-        this.inputManager.deactivateGameControllers();
         this.activeMenu.draw();
-        this.inputManager.activateMenuControllers();
     }
 
     #resetPiecePosition(piece) {
