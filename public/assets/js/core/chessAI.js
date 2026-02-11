@@ -134,7 +134,7 @@ function scoreMove(move, board, color) {
     }
 
     // 3. Check (very powerful for pruning)
-    if (board.isKingInCheck(color)) {
+    if (move.givesCheck) {
         score += 500;
     }
 

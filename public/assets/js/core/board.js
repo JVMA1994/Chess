@@ -101,6 +101,8 @@ class Board {
                 for (const move of moves) {
                     this.makeMove(move);
 
+                    move.givesCheck = this.isKingInCheck(getOpponentColor(color));
+
                     if (!this.isKingInCheck(color)) {
                         legalMoves.push(move);
                     }
