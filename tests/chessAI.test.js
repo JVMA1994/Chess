@@ -111,8 +111,8 @@ describe('Chess AI and Scoring', () => {
             const moveCapturePawn = new Move(4, 4, 4, 7);
             moveCapturePawn.captured = blackPawn;
 
-            const scoreQ = scoreMove(moveCaptureQueen, board, PlayerColor.WHITE);
-            const scoreP = scoreMove(moveCapturePawn, board, PlayerColor.WHITE);
+            const scoreQ = scoreMove(moveCaptureQueen, board);
+            const scoreP = scoreMove(moveCapturePawn, board);
 
             expect(scoreQ).toBeGreaterThan(scoreP);
         });
@@ -130,34 +130,38 @@ describe('Chess AI and Scoring', () => {
             const moveNormal = new Move(1, 1, 0, 1);
             placePieceAt(board, WhitePawn, 1, 1);
 
-            const scoreProm = scoreMove(movePromote, board, PlayerColor.WHITE);
-            const scoreNorm = scoreMove(moveNormal, board, PlayerColor.WHITE);
+            const scoreProm = scoreMove(movePromote, board);
+            const scoreNorm = scoreMove(moveNormal, board);
 
             expect(scoreProm).toBeGreaterThan(scoreNorm);
         });
     });
 
-    describe('AI Decision Making (Minimax)', () => {
+    describe('AI Decision Making (Negamax)', () => {
         test('Finds Mate in 1', () => {
             const board = createEmptyBoard();
 
-            // Use pieces that don't have hardcoded positions
-            // Or force positions with placePieceAt
-            placePieceAt(board, WhiteKing, 7, 4);
-            placePieceAt(board, BlackKing, 0, 0);
+            // Setup: Back-rank mate
+            // Black King trapped on rank 0 by its own pawns on rank 1
+            placePieceAt(board, WhiteKing, 7, 0);
+            placePieceAt(board, BlackKing, 0, 4);
 
-            // Two rooks mate pattern
-            placePieceAt(board, WhiteRook, 1, 0); // Confines King to rank 0
-            placePieceAt(board, WhiteRook, 7, 2); // The killer rook
+            // Black pawns block the King's escape squares
+            placePieceAt(board, BlackPawn, 1, 3);
+            placePieceAt(board, BlackPawn, 1, 4);
+            placePieceAt(board, BlackPawn, 1, 5);
 
-            const bestMove = findBestMove(board, PlayerColor.WHITE, 2);
+            // White Rook can deliver mate by going to row 0
+            placePieceAt(board, WhiteRook, 5, 0);
+
+            const bestMove = findBestMove(board, PlayerColor.WHITE, 3);
 
             expect(bestMove).toBeDefined();
+            // The rook should move to row 0 to deliver back-rank mate
             expect(bestMove.toRow).toBe(0);
-            // Ideally 0,2
         });
 
-        test.skip('Captures Hanging Piece', () => {
+        test('Captures Hanging Piece', () => {
             const board = createEmptyBoard();
             placePieceAt(board, WhiteKing, 7, 4);
             placePieceAt(board, BlackKing, 0, 0);

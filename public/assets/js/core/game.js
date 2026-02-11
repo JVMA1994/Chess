@@ -73,11 +73,27 @@ class Game extends EventEmitter {
 
     switchTurn() {
         this.phase = this.phase === GameState.WHITE_TURN || this.phase === GameState.WHITE_PROMOTING ? GameState.BLACK_TURN : GameState.WHITE_TURN;
+
+        // Check for game over
+        const status = this.board.evaluateGameState(this.phase === GameState.WHITE_TURN ? PlayerColor.WHITE : PlayerColor.BLACK);
+        if (status !== GameState.CONTINUE) {
+            this.phase = status;
+            return;
+        }
+
         if (this.phase === GameState.BLACK_TURN) {
             setTimeout(() => {
-                const bestMove = findBestMove(this.board, PlayerColor.BLACK, 4);
-                const piece = this.board.boardArr[bestMove.fromRow][bestMove.fromCol];
-                this.#executeLegalMove(bestMove, piece);
+                const bestMove = findBestMove(this.board, PlayerColor.BLACK, 8);
+                if (bestMove) {
+                    const piece = this.board.boardArr[bestMove.fromRow][bestMove.fromCol];
+                    this.#executeLegalMove(bestMove, piece);
+                } else {
+                    console.warn("AI returned no move. Checking for game over...");
+                    const finalStatus = this.board.evaluateGameState(PlayerColor.BLACK);
+                    if (finalStatus !== GameState.CONTINUE) {
+                        this.phase = finalStatus;
+                    }
+                }
             }, 200);
         }
     }
@@ -94,8 +110,8 @@ class Game extends EventEmitter {
      * @param {MouseEvent} e - Mouse down event
      */
     handleMouseDown(e) {
-        const {mx, my} = this.#getMousePosition(e);
-        const {row, col} = this.#getBoardCoordinatesFromXY(mx, my);
+        const { mx, my } = this.#getMousePosition(e);
+        const { row, col } = this.#getBoardCoordinatesFromXY(mx, my);
         const piece = this.board.boardArr[row][col];
 
         if (!piece || !this.#isPlayersTurn(piece)) return;
@@ -118,7 +134,7 @@ class Game extends EventEmitter {
     handleMouseMove(e) {
         if (!this.draggedPiece) return;
 
-        const {mx, my} = this.#getMousePosition(e);
+        const { mx, my } = this.#getMousePosition(e);
 
         const legalMoves = this.board.getCachedMoves(this.draggedPiece);
 
@@ -135,7 +151,7 @@ class Game extends EventEmitter {
         if (!this.draggedPiece) return;
 
         const piece = this.draggedPiece;
-        const {row, col} = this.#getBoardCoordinatesFromEvent(e);
+        const { row, col } = this.#getBoardCoordinatesFromEvent(e);
 
         // Handle drops outside the board
         if (!this.#isInsideBoard(row, col)) {
@@ -243,7 +259,7 @@ class Game extends EventEmitter {
      * @returns {{row: number, col: number}}
      */
     #getBoardCoordinatesFromEvent(e) {
-        const {mx, my} = this.#getMousePosition(e);
+        const { mx, my } = this.#getMousePosition(e);
         return {
             col: Math.floor((mx - BOARD_X) / SQUARE_SIZE),
             row: Math.floor((my - BOARD_Y) / SQUARE_SIZE)

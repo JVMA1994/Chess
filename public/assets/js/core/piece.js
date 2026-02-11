@@ -1,3 +1,12 @@
+const PieceType = {
+    PAWN: 0,
+    KNIGHT: 1,
+    BISHOP: 2,
+    ROOK: 3,
+    QUEEN: 4,
+    KING: 5
+};
+
 class Piece {
     constructor(imgCode, color, row, col) {
         this.imgCode = imgCode;
@@ -6,6 +15,7 @@ class Piece {
         this.col = col;
         this.hasMoved = false;
         this.drag = false;
+        this.type = null;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -32,6 +42,7 @@ class Piece {
 class King extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.KING;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -83,7 +94,7 @@ class WhiteKing extends King {
         super(PIECE_CODES.WHITE.KING, PlayerColor.WHITE, 7, 4);
     }
 
-    checkKingSideCastling(board){
+    checkKingSideCastling(board) {
         const rook = board.getPiece(7, 7)
 
         if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
@@ -92,7 +103,7 @@ class WhiteKing extends King {
         const f1 = board.getPiece(7, 5)
         const g1 = board.getPiece(7, 6)
 
-        if(f1 || g1)
+        if (f1 || g1)
             return false
 
         return !(board.isSquareAttacked(7, 5, PlayerColor.BLACK) || board.isSquareAttacked(7, 6, PlayerColor.BLACK));
@@ -101,7 +112,7 @@ class WhiteKing extends King {
     checkQueenSideCastling(board) {
         const rook = board.getPiece(7, 0);
 
-        if (!rook || rook.color !== this.color || rook.hasMoved)
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
             return false;
 
         const b1 = board.getPiece(7, 1);
@@ -117,14 +128,14 @@ class WhiteKing extends King {
             board.isSquareAttacked(7, 2, PlayerColor.BLACK));
     }
 
-    getPseudoLegalMoves(board){
+    getPseudoLegalMoves(board) {
         let moves = super.getPseudoLegalMoves(board);
-        if(this.hasMoved)
+        if (this.hasMoved)
             return moves;
-        if(board.isKingInCheck(this.color))
+        if (board.isKingInCheck(this.color))
             return moves;
 
-        if(this.checkKingSideCastling(board)){
+        if (this.checkKingSideCastling(board)) {
             moves.push(Move.castling(this.row, this.col, 7, 6, 7, 5));
         }
 
@@ -142,7 +153,7 @@ class BlackKing extends King {
         super(PIECE_CODES.BLACK.KING, PlayerColor.BLACK, 0, 4);
     }
 
-    checkKingSideCastling(board){
+    checkKingSideCastling(board) {
         const rook = board.getPiece(0, 7)
 
         if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
@@ -151,7 +162,7 @@ class BlackKing extends King {
         const f8 = board.getPiece(0, 5)
         const g8 = board.getPiece(0, 6)
 
-        if(f8 || g8)
+        if (f8 || g8)
             return false
 
         return !(board.isSquareAttacked(0, 5, PlayerColor.WHITE) || board.isSquareAttacked(0, 6, PlayerColor.WHITE));
@@ -160,7 +171,7 @@ class BlackKing extends King {
     checkQueenSideCastling(board) {
         const rook = board.getPiece(0, 0);
 
-        if (!rook || rook.color !== this.color || rook.hasMoved)
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
             return false;
 
         const b8 = board.getPiece(0, 1);
@@ -174,14 +185,14 @@ class BlackKing extends King {
             board.isSquareAttacked(0, 2, PlayerColor.WHITE));
     }
 
-    getPseudoLegalMoves(board){
+    getPseudoLegalMoves(board) {
         let moves = super.getPseudoLegalMoves(board);
-        if(this.hasMoved)
+        if (this.hasMoved)
             return moves;
-        if(board.isKingInCheck(this.color))
+        if (board.isKingInCheck(this.color))
             return moves;
 
-        if(this.checkKingSideCastling(board)){
+        if (this.checkKingSideCastling(board)) {
             moves.push(Move.castling(this.row, this.col, 0, 6, 7, 5));
         }
 
@@ -197,6 +208,7 @@ class BlackKing extends King {
 class Queen extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.QUEEN;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -242,6 +254,7 @@ class BlackQueen extends Queen {
 class Rook extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.ROOK;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -288,6 +301,7 @@ class BlackRook extends Rook {
 class Bishop extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.BISHOP;
     }
 
     /**
@@ -338,6 +352,7 @@ class BlackBishop extends Bishop {
 class Knight extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.KNIGHT;
     }
 
     /**
@@ -367,13 +382,13 @@ class Knight extends Piece {
 }
 
 class WhiteKnight extends Knight {
-    constructor( col, row = 7) {
+    constructor(col, row = 7) {
         super(PIECE_CODES.WHITE.KNIGHT, PlayerColor.WHITE, row, col); // col: 1 or 6
     }
 }
 
 class BlackKnight extends Knight {
-    constructor( col, row = 0) {
+    constructor(col, row = 0) {
         super(PIECE_CODES.BLACK.KNIGHT, PlayerColor.BLACK, row, col); // col: 1 or 6
     }
 }
@@ -381,6 +396,7 @@ class BlackKnight extends Knight {
 class Pawn extends Piece {
     constructor(img, row, col, color) {
         super(img, color, row, col); // col: 0–7
+        this.type = PieceType.PAWN;
     }
 }
 class WhitePawn extends Pawn {
@@ -440,12 +456,16 @@ class WhitePawn extends Pawn {
                 const targetRow = this.row + dir[0];
                 const targetCol = this.col + dir[1];
                 if (this.isValidMove(board, targetRow, targetCol)) {
-                    if(targetRow === lastRank)
-                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                    if (targetRow === lastRank) {
+                        // Generate all 4 promotion types — under-promotion (Knight) can be the only winning move
+                        for (const type of [PromotionType.QUEEN, PromotionType.ROOK, PromotionType.BISHOP, PromotionType.KNIGHT]) {
+                            moves.push(Move.promotion(this.row, this.col, targetRow, targetCol, type));
+                        }
+                    }
                     else
                         moves.push(new Move(this.row, this.col, targetRow, targetCol));
                 }
-                if(Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol){
+                if (Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol) {
                     moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
                 }
             });
@@ -510,12 +530,16 @@ class BlackPawn extends Pawn {
                 const targetRow = this.row + dir[0];
                 const targetCol = this.col + dir[1];
                 if (this.isValidMove(board, targetRow, targetCol)) {
-                    if(targetRow === lastRank)
-                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                    if (targetRow === lastRank) {
+                        // Generate all 4 promotion types — under-promotion (Knight) can be the only winning move
+                        for (const type of [PromotionType.QUEEN, PromotionType.ROOK, PromotionType.BISHOP, PromotionType.KNIGHT]) {
+                            moves.push(Move.promotion(this.row, this.col, targetRow, targetCol, type));
+                        }
+                    }
                     else
                         moves.push(new Move(this.row, this.col, targetRow, targetCol));
                 }
-                if(Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol){
+                if (Math.abs(dir[1]) === 1 && board.enPassantTargetSquare && board.enPassantTargetSquare.row === targetRow && board.enPassantTargetSquare.col === targetCol) {
                     moves.push(Move.enPassant(this.row, this.col, targetRow, targetCol, this.row, targetCol));
                 }
             });

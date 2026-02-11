@@ -60,6 +60,15 @@ const PromotionType = Object.freeze({
     KNIGHT: 'KNIGHT'
 });
 
+const PieceType = {
+    PAWN: 0,
+    KNIGHT: 1,
+    BISHOP: 2,
+    ROOK: 3,
+    QUEEN: 4,
+    KING: 5
+};
+
 const PST_TABLES = {
 
     PAWN: [
@@ -184,6 +193,7 @@ class Piece {
         this.col = col;
         this.hasMoved = false;
         this.drag = false;
+        this.type = null;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -210,6 +220,7 @@ class Piece {
 class King extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.KING;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -260,7 +271,7 @@ class WhiteKing extends King {
 
     checkQueenSideCastling(board) {
         const rook = board.getPiece(7, 0);
-        if (!rook || rook.color !== this.color || rook.hasMoved)
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
             return false;
         const b1 = board.getPiece(7, 1);
         const c1 = board.getPiece(7, 2);
@@ -305,7 +316,7 @@ class BlackKing extends King {
 
     checkQueenSideCastling(board) {
         const rook = board.getPiece(0, 0);
-        if (!rook || rook.color !== this.color || rook.hasMoved)
+        if (!rook || rook.color !== this.color || rook.hasMoved || !(rook instanceof Rook))
             return false;
         const b8 = board.getPiece(0, 1);
         const c8 = board.getPiece(0, 2);
@@ -335,6 +346,7 @@ class BlackKing extends King {
 class Queen extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.QUEEN;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -379,6 +391,7 @@ class BlackQueen extends Queen {
 class Rook extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.ROOK;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -423,6 +436,7 @@ class BlackRook extends Rook {
 class Bishop extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.BISHOP;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -467,6 +481,7 @@ class BlackBishop extends Bishop {
 class Knight extends Piece {
     constructor(img, color, row, col) {
         super(img, color, row, col);
+        this.type = PieceType.KNIGHT;
     }
 
     isValidMove(board, targetRow, targetCol) {
@@ -505,6 +520,7 @@ class BlackKnight extends Knight {
 class Pawn extends Piece {
     constructor(img, row, col, color) {
         super(img, color, row, col);
+        this.type = PieceType.PAWN;
     }
 }
 
@@ -545,8 +561,11 @@ class WhitePawn extends Pawn {
             const targetRow = this.row + dir[0];
             const targetCol = this.col + dir[1];
             if (this.isValidMove(board, targetRow, targetCol)) {
-                if (targetRow === lastRank)
-                    moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                if (targetRow === lastRank) {
+                    for (const type of [PromotionType.QUEEN, PromotionType.ROOK, PromotionType.BISHOP, PromotionType.KNIGHT]) {
+                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol, type));
+                    }
+                }
                 else
                     moves.push(new Move(this.row, this.col, targetRow, targetCol));
             }
@@ -593,8 +612,11 @@ class BlackPawn extends Pawn {
             const targetRow = this.row + dir[0];
             const targetCol = this.col + dir[1];
             if (this.isValidMove(board, targetRow, targetCol)) {
-                if (targetRow === lastRank)
-                    moves.push(Move.promotion(this.row, this.col, targetRow, targetCol));
+                if (targetRow === lastRank) {
+                    for (const type of [PromotionType.QUEEN, PromotionType.ROOK, PromotionType.BISHOP, PromotionType.KNIGHT]) {
+                        moves.push(Move.promotion(this.row, this.col, targetRow, targetCol, type));
+                    }
+                }
                 else
                     moves.push(new Move(this.row, this.col, targetRow, targetCol));
             }
@@ -651,556 +673,546 @@ class Board {
         this.whiteKing = null;
         this.legalMovesForAPieceCache = new Map();
         this.enPassantTargetSquare = null;
-        this.previousEnPassantTargetSquare = null;
+        this.zobristKey = 0n;
+        this.castlingRights = 15;
+        this.whiteEvalScore = 0;
     }
 
     initializeBoard() {
-        // Initialize all 32 pieces in starting configuration
-        // White pieces (rows 6 and 7)
-        for (let col = 0; col < 8; col++) {
-            this.placePiece(new WhitePawn(null, col));
-        }
-        this.placePiece(new WhiteRook(null, 0, 7));
-        this.placePiece(new WhiteKnight(null, 1, 7));
-        this.placePiece(new WhiteBishop(null, 2, 7));
-        this.placePiece(new WhiteQueen(null));
-        this.placePiece(new WhiteKing(null));
-        this.placePiece(new WhiteBishop(null, 5, 7));
-        this.placePiece(new WhiteKnight(null, 6, 7));
-        this.placePiece(new WhiteRook(null, 7, 7));
+        this.whiteEvalScore = 0;
+        this.zobristKey = 0n;
+        this.blackPieces = [];
+        this.whitePieces = [];
+        this.boardArr = Array.from({ length: 8 }, () => Array(8).fill(null));
 
-        // Black pieces (rows 0 and 1)
-        for (let col = 0; col < 8; col++) {
-            this.placePiece(new BlackPawn(null, col));
-        }
-        this.placePiece(new BlackRook(null, 0, 0));
-        this.placePiece(new BlackKnight(null, 1, 0));
-        this.placePiece(new BlackBishop(null, 2, 0));
+        this.placePiece(new BlackRook(null, 0));
+        this.placePiece(new BlackKnight(null, 1));
+        this.placePiece(new BlackBishop(null, 2));
         this.placePiece(new BlackQueen(null));
         this.placePiece(new BlackKing(null));
-        this.placePiece(new BlackBishop(null, 5, 0));
-        this.placePiece(new BlackKnight(null, 6, 0));
-        this.placePiece(new BlackRook(null, 7, 0));
+        this.placePiece(new BlackBishop(null, 5));
+        this.placePiece(new BlackKnight(null, 6));
+        this.placePiece(new BlackRook(null, 7));
+        for (let col = 0; col < 8; col++) this.placePiece(new BlackPawn(null, col));
+
+        this.placePiece(new WhiteRook(null, 0));
+        this.placePiece(new WhiteKnight(null, 1));
+        this.placePiece(new WhiteBishop(null, 2));
+        this.placePiece(new WhiteQueen(null));
+        this.placePiece(new WhiteKing(null));
+        this.placePiece(new WhiteBishop(null, 5));
+        this.placePiece(new WhiteKnight(null, 6));
+        this.placePiece(new WhiteRook(null, 7));
+        for (let col = 0; col < 8; col++) this.placePiece(new WhitePawn(null, col));
+
+        this.zobristKey = zobrist.computeHash(this, PlayerColor.WHITE);
+        this.castlingRights = zobrist.getCastlingMask(this);
     }
 
     placePiece(piece) {
-        if (PlayerColor.WHITE === piece.color) {
-            this.whitePieces.push(piece);
-        } else {
-            this.blackPieces.push(piece);
-        }
+        if (PlayerColor.WHITE === piece.color) this.whitePieces.push(piece);
+        else this.blackPieces.push(piece);
         this.boardArr[piece.row][piece.col] = piece;
         if (piece instanceof WhiteKing) this.whiteKing = piece;
         if (piece instanceof BlackKing) this.blackKing = piece;
+        this._togglePieceState(piece, piece.row, piece.col, true);
     }
 
-    getPiece(row, col) {
-        return this.boardArr[row][col];
-    }
-
-    getLegalMoveOrNull(piece, move) {
-        const cachedMoves = this.legalMovesForAPieceCache?.get(piece);
-        const moves = cachedMoves ?? this.getLegalMovesOfPiece(piece);
-        return moves.find(m => m.toRow === move.toRow && m.toCol === move.toCol);
-    }
+    getPiece(row, col) { return this.boardArr[row][col]; }
 
     getLegalMovesOfPiece(piece) {
-        let legalMoves = [];
-        const moves = piece.getPseudoLegalMoves(this);
-        for (const move of moves) {
+        return piece.getPseudoLegalMoves(this).filter(move => {
             this.makeMove(move);
-            if (!this.isKingInCheck(piece.color)) {
-                legalMoves.push(move);
-            }
+            const inCheck = this.isKingInCheck(piece.color);
             this.undoMove(move);
-        }
-        return legalMoves;
+            return !inCheck;
+        });
     }
 
     getLegalMoves(color) {
         let legalMoves = [];
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                let piece = this.boardArr[row][col];
-                if (!piece || piece.color !== color)
-                    continue;
+        const pieces = color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
+        for (const piece of pieces) {
+            if (this.boardArr[piece.row][piece.col] === piece) {
                 const moves = piece.getPseudoLegalMoves(this);
-                for (const move of moves) {
-                    this.makeMove(move);
+                for (const m of moves) {
+                    this.makeMove(m);
                     if (!this.isKingInCheck(color)) {
-                        legalMoves.push(move);
+                        legalMoves.push(m);
                     }
-                    this.undoMove(move);
+                    this.undoMove(m);
                 }
             }
         }
         return legalMoves;
+    }
+
+    getLegalMoveOrNull(piece, move) {
+        const moves = this.getLegalMovesOfPiece(piece);
+        return moves.find(m => m.toRow === move.toRow && m.toCol === move.toCol);
     }
 
     evaluateGameState(color) {
         const isKingInCheck = this.isKingInCheck(color);
         let legalMoves = this.getLegalMoves(color);
-        if (this._isStaleMate(isKingInCheck, legalMoves)) {
-            return GameState.STALEMATE;
-        }
-        if (this._isCheckMate(isKingInCheck, legalMoves)) {
-            return PlayerColor.WHITE === color ? GameState.CHECKMATE_BLACK_WINS : GameState.CHECKMATE_WHITE_WINS;
+        if (legalMoves.length === 0) {
+            return isKingInCheck ? (color === PlayerColor.WHITE ? GameState.CHECKMATE_BLACK_WINS : GameState.CHECKMATE_WHITE_WINS) : GameState.STALEMATE;
         }
         return GameState.CONTINUE;
     }
 
-    _isStaleMate(isKingInCheck, legalMoves) {
-        if (isKingInCheck)
-            return false;
-        return legalMoves.length === 0;
-    }
-
-    _isCheckMate(isKingInCheck, legalMoves) {
-        if (!isKingInCheck)
-            return false;
-        return legalMoves.length === 0;
+    getCaptures(color) {
+        let captures = [];
+        const pieces = color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
+        for (const piece of pieces) {
+            if (this.boardArr[piece.row][piece.col] === piece) {
+                const moves = piece.getPseudoLegalMoves(this);
+                for (const m of moves) {
+                    if (m.captured || m.isPromotion) {
+                        this.makeMove(m);
+                        if (!this.isKingInCheck(color)) {
+                            captures.push(m);
+                        }
+                        this.undoMove(m);
+                    }
+                }
+            }
+        }
+        return captures;
     }
 
     makeMove(move) {
-        // Store previous en passant state in the move for undo
+        move.prevZobristKey = this.zobristKey;
+        move.prevCastlingRights = this.castlingRights;
+        move.prevWhiteEvalScore = this.whiteEvalScore;
         move.previousEnPassantTargetSquare = this.enPassantTargetSquare;
-        this.enPassantTargetSquare = null;
+
+        this.zobristKey ^= zobrist.sideKey;
+        if (this.enPassantTargetSquare) this.zobristKey ^= zobrist.enPassantKeys[this.enPassantTargetSquare.col];
 
         const piece = this.boardArr[move.fromRow][move.fromCol];
         move.captured = this.boardArr[move.toRow][move.toCol];
 
+        this._togglePieceState(piece, move.fromRow, move.fromCol, false);
+        if (move.captured && !move.isEnPassant) this._togglePieceState(move.captured, move.toRow, move.toCol, false);
+
         this.boardArr[move.fromRow][move.fromCol] = null;
         this.boardArr[move.toRow][move.toCol] = piece;
-
-        piece.row = move.toRow;
-        piece.col = move.toCol;
-
-        move.prevHasMoved = piece.hasMoved;
-        piece.hasMoved = true;
+        piece.row = move.toRow; piece.col = move.toCol;
+        move.prevHasMoved = piece.hasMoved; piece.hasMoved = true;
+        this.enPassantTargetSquare = null;
 
         if (move.isCastling) {
-            // console.log('makeMove: Castling!', move);
             const rook = this.boardArr[move.fromRow][move.rookFromCol];
-            // console.log('makeMove: Rook found?', rook);
+            this._togglePieceState(rook, move.fromRow, move.rookFromCol, false);
             this.boardArr[piece.row][move.rookFromCol] = null;
             this.boardArr[piece.row][move.rookToCol] = rook;
-            move.prevRookHasMoved = rook.hasMoved;
-            rook.hasMoved = true;
-            // Fix: Update rook coordinates
-            rook.row = piece.row;
-            rook.col = move.rookToCol;
+            move.prevRookHasMoved = rook.hasMoved; rook.hasMoved = true;
+            rook.row = piece.row; rook.col = move.rookToCol;
+            this._togglePieceState(rook, rook.row, rook.col, true);
         }
 
         if (move.isEnPassant) {
             move.captured = this.boardArr[move.capturedPawnRow][move.capturedPawnCol];
+            this._togglePieceState(move.captured, move.capturedPawnRow, move.capturedPawnCol, false);
             this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = null;
         }
 
-        if (Math.abs(move.toRow - move.fromRow) === 2) {
-            if (piece instanceof WhitePawn)
-                this.enPassantTargetSquare = { row: move.toRow + 1, col: move.toCol };
-            else if (piece instanceof BlackPawn)
-                this.enPassantTargetSquare = { row: move.toRow - 1, col: move.toCol };
+        // --- NEW: Remove captured piece from piece list ---
+        if (move.captured) {
+            const list = (move.captured.color === PlayerColor.WHITE) ? this.whitePieces : this.blackPieces;
+            const idx = list.indexOf(move.captured);
+            if (idx !== -1) list.splice(idx, 1);
         }
 
-        // Handle promotion
+        if (Math.abs(move.toRow - move.fromRow) === 2 && (piece instanceof WhitePawn || piece instanceof BlackPawn)) {
+            this.enPassantTargetSquare = { row: (move.toRow + move.fromRow) / 2, col: move.toCol };
+            this.zobristKey ^= zobrist.enPassantKeys[this.enPassantTargetSquare.col];
+        }
+
         if (move.isPromotion && move.promotionPiece) {
-            // Store original pawn for undo
             move.originalPawn = piece;
-
-            // Create promoted piece  
-            const promotedPiece = this._createPromotedPiece(
-                move.promotionPiece,
-                piece.color,
-                move.toRow,
-                move.toCol
-            );
-
-            // Replace pawn with promoted piece
+            const promotedPiece = this._createPromotedPiece(move.promotionPiece, piece.color, move.toRow, move.toCol);
             this.boardArr[move.toRow][move.toCol] = promotedPiece;
-
-            // Update piece lists
             const pieceList = piece.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
-            const pawnIndex = pieceList.indexOf(piece);
-            if (pawnIndex !== -1) {
-                pieceList.splice(pawnIndex, 1);
-            }
+            const idx = pieceList.indexOf(piece);
+            if (idx !== -1) pieceList.splice(idx, 1);
             pieceList.push(promotedPiece);
+            this._togglePieceState(promotedPiece, move.toRow, move.toCol, true);
+        } else {
+            this._togglePieceState(piece, move.toRow, move.toCol, true);
         }
+
+        this.zobristKey ^= zobrist.castlingKeys[this.castlingRights];
+        this.castlingRights = zobrist.getCastlingMask(this);
+        this.zobristKey ^= zobrist.castlingKeys[this.castlingRights];
     }
 
     undoMove(move) {
-        // Restore en passant state from the move object
+        this.zobristKey = move.prevZobristKey;
+        this.castlingRights = move.prevCastlingRights;
+        this.whiteEvalScore = move.prevWhiteEvalScore;
         this.enPassantTargetSquare = move.previousEnPassantTargetSquare;
+
         const piece = this.boardArr[move.toRow][move.toCol];
-        this.boardArr[move.toRow][move.toCol] = move.captured;
-        this.boardArr[move.fromRow][move.fromCol] = piece;
-        piece.row = move.fromRow;
-        piece.col = move.fromCol;
+        if (move.isPromotion && move.originalPawn) {
+            this.boardArr[move.fromRow][move.fromCol] = move.originalPawn;
+            move.originalPawn.row = move.fromRow; move.originalPawn.col = move.fromCol;
+            const pieceList = move.originalPawn.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
+            const idx = pieceList.indexOf(piece);
+            if (idx !== -1) pieceList.splice(idx, 1);
+            pieceList.push(move.originalPawn);
+            this.boardArr[move.toRow][move.toCol] = move.captured;
+
+            // Restore captured piece to list if it was a capture-promotion
+            if (move.captured) {
+                const opponentList = (move.captured.color === PlayerColor.WHITE) ? this.whitePieces : this.blackPieces;
+                opponentList.push(move.captured);
+            }
+        } else {
+            this.boardArr[move.toRow][move.toCol] = move.captured;
+            this.boardArr[move.fromRow][move.fromCol] = piece;
+            piece.row = move.fromRow; piece.col = move.fromCol;
+
+            // Restore captured piece to list
+            if (move.captured) {
+                const list = (move.captured.color === PlayerColor.WHITE) ? this.whitePieces : this.blackPieces;
+                list.push(move.captured);
+            }
+        }
         piece.hasMoved = move.prevHasMoved;
+
         if (move.isCastling) {
-            const rook = this.boardArr[move.toRow][move.rookToCol];
-            this.boardArr[move.toRow][move.rookToCol] = null;
+            const rook = this.boardArr[move.fromRow][move.rookToCol];
+            this.boardArr[move.fromRow][move.rookToCol] = null;
             this.boardArr[move.fromRow][move.rookFromCol] = rook;
             rook.hasMoved = move.prevRookHasMoved;
-            // Fix: Restore rook coordinates
-            rook.row = move.fromRow;
-            rook.col = move.rookFromCol;
+            rook.row = move.fromRow; rook.col = move.rookFromCol;
         }
+
         if (move.isEnPassant) {
             this.boardArr[move.toRow][move.toCol] = null;
             this.boardArr[move.capturedPawnRow][move.capturedPawnCol] = move.captured;
         }
+    }
 
-        // Handle promotion undo
-        if (move.isPromotion && move.originalPawn) {
-            // Remove promoted piece from board
-            const promotedPiece = this.boardArr[move.fromRow][move.fromCol];
-            this.boardArr[move.fromRow][move.fromCol] = move.originalPawn;
-            // Fix: Restore original pawn coordinates
-            move.originalPawn.row = move.fromRow;
-            move.originalPawn.col = move.fromCol;
+    _togglePieceState(piece, row, col, isAdding) {
+        if (!piece) return;
+        const colorIdx = (piece.color === PlayerColor.WHITE) ? 0 : 1;
+        const squareIdx = row * 8 + col;
+        if (piece.type !== null) this.zobristKey ^= zobrist.pieceKeys[colorIdx][piece.type][squareIdx];
+        const val = (PIECE_VALUE.get(piece.constructor) || 0) + this._getPSTValue(piece, row, col);
+        this.whiteEvalScore += (isAdding ? 1 : -1) * (piece.color === PlayerColor.WHITE ? val : -val);
+    }
 
-            // Update piece lists
-            const pieceList = move.originalPawn.color === PlayerColor.WHITE ? this.whitePieces : this.blackPieces;
-            const promotedIndex = pieceList.indexOf(promotedPiece);
-            if (promotedIndex !== -1) {
-                pieceList.splice(promotedIndex, 1);
-            }
-            pieceList.push(move.originalPawn);
+    _getPSTValue(piece, row, col) {
+        const table = PST.get(piece.constructor);
+        if (!table) return 0;
+        return piece.color === PlayerColor.WHITE ? table[row][col] : table[7 - row][col];
+    }
 
-            // Restore captured piece if any
-            this.boardArr[move.toRow][move.toCol] = move.captured;
-        }
+    evaluateBoard(perspectiveColor) {
+        let score = (perspectiveColor === PlayerColor.WHITE ? this.whiteEvalScore : -this.whiteEvalScore);
+        return score === 0 ? 0 : score;
     }
 
     isKingInCheck(color) {
         const king = color === PlayerColor.WHITE ? this.whiteKing : this.blackKing;
-        return this.isSquareAttacked(king.row, king.col, this._getOpponentColor(color));
+        return king ? this.isSquareAttacked(king.row, king.col, getOpponentColor(color)) : false;
     }
 
-    isSquareAttacked(row, col, byColor) {
-        return (
-            this._isPawnAttack(row, col, byColor) ||
-            this._isKnightAttack(row, col, byColor) ||
-            this._isSlidingAttack(row, col, byColor, ROOK_DIRS, Rook) ||
-            this._isSlidingAttack(row, col, byColor, BISHOP_DIRS, Bishop) ||
-            this._isKingAttack(row, col, byColor)
-        );
+    isSquareAttacked(row, col, attackerColor) {
+        if (this._isKnightAttack(row, col, attackerColor)) return true;
+        if (this._isPawnAttack(row, col, attackerColor)) return true;
+        if (this._isKingAttack(row, col, attackerColor)) return true;
+        return this._isSlidingAttack(row, col, attackerColor, ROOK_DIRS, [Rook, Queen]) || this._isSlidingAttack(row, col, attackerColor, BISHOP_DIRS, [Bishop, Queen]);
     }
 
-    _isKnightAttack(row, col, color) {
+    _isKnightAttack(r, c, color) {
         for (const [dr, dc] of KNIGHT_OFFSETS) {
-            const newRow = row + dr;
-            const newCol = col + dc;
-            if (this._isInsideBoard(newRow, newCol)) {
-                let piece = this.boardArr[newRow][newCol];
-                if (piece && piece.color === color && piece instanceof Knight) {
-                    return true;
-                }
+            const nr = r + dr, nc = c + dc;
+            if (this._isInsideBoard(nr, nc)) {
+                const p = this.boardArr[nr][nc];
+                if (p && p.color === color && p instanceof Knight) return true;
             }
         }
         return false;
     }
 
-    _isPawnAttack(row, col, color) {
-        const dir = color === PlayerColor.WHITE ? 1 : -1;
-        const pawnClass = color === PlayerColor.WHITE ? WhitePawn : BlackPawn;
-        for (const c of [-1, 1]) {
-            const newRow = row + dir;
-            const newCol = col + c;
-            if (this._isInsideBoard(newRow, newCol)) {
-                let piece = this.boardArr[newRow][newCol];
-                if (piece && piece instanceof pawnClass) {
-                    return true;
-                }
+    _isPawnAttack(r, c, color) {
+        const dr = color === PlayerColor.WHITE ? 1 : -1;
+        for (const dc of [-1, 1]) {
+            const nc = c + dc;
+            if (this._isInsideBoard(r + dr, nc)) {
+                const p = this.boardArr[r + dr][nc];
+                if (p && p.color === color && p instanceof Pawn) return true;
             }
         }
         return false;
     }
 
-    _isKingAttack(row, col, color) {
+    _isKingAttack(r, c, color) {
         for (const [dr, dc] of KING_OFFSETS) {
-            const newRow = row + dr;
-            const newCol = col + dc;
-            if (this._isInsideBoard(newRow, newCol)) {
-                const p = this.boardArr[newRow][newCol];
-                if (p && p.color === color && p instanceof King) {
-                    return true;
-                }
+            const nr = r + dr, nc = c + dc;
+            if (this._isInsideBoard(nr, nc)) {
+                const p = this.boardArr[nr][nc];
+                if (p && p.color === color && p instanceof King) return true;
             }
         }
         return false;
     }
 
-    _isSlidingAttack(row, col, color, dir, pieceClass) {
-        for (const [dr, dc] of dir) {
-            let newRow = row + dr;
-            let newCol = col + dc;
-            while (this._isInsideBoard(newRow, newCol)) {
-                const p = this.boardArr[newRow][newCol];
+    _isSlidingAttack(r, c, color, dirs, classes) {
+        for (const [dr, dc] of dirs) {
+            let nr = r + dr, nc = c + dc;
+            while (this._isInsideBoard(nr, nc)) {
+                const p = this.boardArr[nr][nc];
                 if (p) {
-                    if (p.color === color && (p instanceof pieceClass || p instanceof Queen))
-                        return true;
-                    else
-                        break;
+                    if (p.color === color && classes.some(cls => p instanceof cls)) return true;
+                    break;
                 }
-                newRow += dr;
-                newCol += dc;
+                nr += dr; nc += dc;
             }
         }
         return false;
     }
 
-    _createPromotedPiece(type, color, row, col) {
-        if (type === PromotionType.QUEEN)
-            return color === PlayerColor.WHITE
-                ? new WhiteQueen(null, col, row)
-                : new BlackQueen(null, col, row);
+    _isInsideBoard(r, c) { return r >= 0 && r < 8 && c >= 0 && c < 8; }
 
-        if (type === PromotionType.ROOK)
-            return color === PlayerColor.WHITE
-                ? new WhiteRook(null, col, row)
-                : new BlackRook(null, col, row);
-
-        if (type === PromotionType.BISHOP)
-            return color === PlayerColor.WHITE
-                ? new WhiteBishop(null, col, row)
-                : new BlackBishop(null, col, row);
-
-        if (type === PromotionType.KNIGHT)
-            return color === PlayerColor.WHITE
-                ? new WhiteKnight(null, col, row)
-                : new BlackKnight(null, col, row);
-    }
-
-    _getOpponentColor(color) {
-        return PlayerColor.WHITE === color ? PlayerColor.BLACK : PlayerColor.WHITE;
-    }
-
-    _isInsideBoard(row, col) {
-        return row >= 0 && row < 8 && col >= 0 && col < 8;
-    }
-
-    cacheLegalMoves(draggedPiece, legalMoves) {
-        this.legalMovesForAPieceCache.set(draggedPiece, legalMoves);
-    }
-
-    evictLegalMovesCache() {
-        this.legalMovesForAPieceCache.clear();
-    }
-
-    getCachedMoves(piece) {
-        return this.legalMovesForAPieceCache.get(piece);
-    }
-
-    evaluateBoard(perspectiveColor) {
-        let score = 0;
-
-        for (let row = 0; row < 8; row++) {
-            for (let col = 0; col < 8; col++) {
-                const piece = this.boardArr[row][col];
-                if (!piece) continue;
-
-                const material = PIECE_VALUE.get(piece.constructor);
-                const positional = getPSTValue(piece, row, col);
-
-                const total = material + positional;
-
-                if (piece.color === perspectiveColor)
-                    score += total;
-                else
-                    score -= total;
-            }
+    _createPromotedPiece(type, color, r, c) {
+        const isWhite = color === PlayerColor.WHITE;
+        switch (type) {
+            case PromotionType.QUEEN: return isWhite ? new WhiteQueen(null) : new BlackQueen(null);
+            case PromotionType.ROOK: return isWhite ? new WhiteRook(null, c) : new BlackRook(null, c);
+            case PromotionType.BISHOP: return isWhite ? new WhiteBishop(null, c) : new BlackBishop(null, c);
+            case PromotionType.KNIGHT: return isWhite ? new WhiteKnight(null, c) : new BlackKnight(null, c);
+            default: return isWhite ? new WhiteQueen(null) : new BlackQueen(null);
         }
-
-        return score;
     }
 }
 
-function findBestMove(board, aiColor, depth) {
-    const moves = board.getLegalMoves(aiColor);
+const CHECKMATE_SCORE = 100000;
+const STALEMATE_SCORE = 0;
+const SEARCH_STATS = { nodes: 0, startTime: 0, timeLimit: 5000, stop: false };
 
-    let bestScore = -Infinity;
+function findBestMove(board, aiColor, maxDepth) {
+    SEARCH_STATS.nodes = 0; SEARCH_STATS.startTime = Date.now(); SEARCH_STATS.stop = false;
     let bestMove = null;
-
-    let alpha = -Infinity;
-    let beta = Infinity;
-
-    for (const move of moves) {
-        board.makeMove(move);
-
-        const score = minimax(
-            board,
-            depth - 1,
-            alpha,
-            beta,
-            false,
-            aiColor
-        );
-
-        board.undoMove(move);
-
-        if (score > bestScore) {
-            bestScore = score;
-            bestMove = move;
+    const moves = board.getLegalMoves(aiColor);
+    if (moves.length === 0) return null;
+    for (let d = 1; d <= maxDepth; d++) {
+        let alpha = -Infinity, beta = Infinity, bestScore = -Infinity, bestAtDepth = null;
+        orderMoves(moves, board, tt.getBestMove(board.zobristKey));
+        for (const m of moves) {
+            board.makeMove(m);
+            const s = -negamax(board, d - 1, -beta, -alpha, getOpponentColor(aiColor));
+            board.undoMove(m);
+            if (SEARCH_STATS.stop) break;
+            if (s > bestScore) { bestScore = s; bestAtDepth = m; }
+            alpha = Math.max(alpha, bestScore);
         }
-
-        alpha = Math.max(alpha, bestScore);
+        if (SEARCH_STATS.stop) break;
+        bestMove = bestAtDepth;
+        if (bestScore > CHECKMATE_SCORE - 100) break;
     }
-
     return bestMove;
 }
 
-function getOpponentColor(colorToMove) {
-    return PlayerColor.WHITE === colorToMove ? PlayerColor.BLACK : PlayerColor.WHITE;
-}
+function negamax(board, depth, alpha, beta, color) {
+    SEARCH_STATS.nodes++;
+    if ((SEARCH_STATS.nodes & 1023) === 0 && (Date.now() - SEARCH_STATS.startTime > SEARCH_STATS.timeLimit)) SEARCH_STATS.stop = true;
+    if (SEARCH_STATS.stop) return 0;
 
-function minimax(board, depth, alpha, beta, isMaximizing, perspectiveColor) {
-    if (depth === 0) {
-        return board.evaluateBoard(perspectiveColor);
-    }
+    const h = board.zobristKey;
+    const cached = tt.lookup(h, depth, alpha, beta);
+    if (cached !== null) return cached;
 
-    const colorToMove = isMaximizing
-        ? perspectiveColor
-        : (perspectiveColor === PlayerColor.WHITE
-            ? PlayerColor.BLACK
-            : PlayerColor.WHITE);
+    if (depth <= 0) return quiescence(board, alpha, beta, color);
 
-    const moves = board.getLegalMoves(colorToMove);
-    // Removed 'this.' from scoreMove calls
-    moves.sort((a, b) => scoreMove(b, board, getOpponentColor(colorToMove)) - scoreMove(a, board, getOpponentColor(colorToMove)));
+    const inCheck = board.isKingInCheck(color);
 
-    if (moves.length === 0) {
-        return board.evaluateBoard(perspectiveColor);
-    }
-
-    if (isMaximizing) {
-        let best = -Infinity;
-
-        for (const move of moves) {
-            board.makeMove(move);
-
-            const score = minimax(
-                board,
-                depth - 1,
-                alpha,
-                beta,
-                false,
-                perspectiveColor
-            );
-
-            board.undoMove(move);
-
-            best = Math.max(best, score);
-            if (best >= beta) break;
-            alpha = Math.max(alpha, best);
+    // 1. Null Move Pruning (NMP)
+    if (depth >= 3 && !inCheck) {
+        // Simplified check for "Zugzwang" potential: have at least one minor/major piece
+        const pieceList = color === PlayerColor.WHITE ? board.whitePieces : board.blackPieces;
+        let hasBigPiece = false;
+        for (const p of pieceList) {
+            if (p.type !== PieceType.PAWN && p.type !== PieceType.KING) {
+                hasBigPiece = true;
+                break;
+            }
         }
 
-        return best;
+        if (hasBigPiece) {
+            const R = depth > 6 ? 3 : 2;
+            // Make null move
+            board.zobristKey ^= zobrist.sideKey; // toggle side
+            if (board.enPassantTargetSquare) board.zobristKey ^= zobrist.enPassantKeys[board.enPassantTargetSquare.col];
+            const prevEP = board.enPassantTargetSquare;
+            board.enPassantTargetSquare = null;
 
-    } else {
-        let best = Infinity;
+            const score = -negamax(board, depth - 1 - R, -beta, -beta + 1, getOpponentColor(color));
 
-        for (const move of moves) {
-            board.makeMove(move);
+            // Undo null move
+            board.enPassantTargetSquare = prevEP;
+            if (board.enPassantTargetSquare) board.zobristKey ^= zobrist.enPassantKeys[board.enPassantTargetSquare.col];
+            board.zobristKey ^= zobrist.sideKey;
 
-            const score = minimax(
-                board,
-                depth - 1,
-                alpha,
-                beta,
-                true,
-                perspectiveColor
-            );
+            if (score >= beta) return beta;
+        }
+    }
 
-            board.undoMove(move);
+    const moves = board.getLegalMoves(color);
+    if (moves.length === 0) return inCheck ? -(CHECKMATE_SCORE - depth) : STALEMATE_SCORE;
 
-            best = Math.min(best, score);
-            if (best <= alpha) break;
-            beta = Math.min(beta, best);
+    orderMoves(moves, board, tt.getBestMove(h));
+
+    const originalAlpha = alpha;
+    let best = -Infinity;
+    let bestM = null;
+    let movesSearched = 0;
+
+    for (const m of moves) {
+        board.makeMove(m);
+        movesSearched++;
+
+        let s;
+        // 2. Late Move Reductions (LMR)
+        if (movesSearched > 4 && depth >= 3 && !inCheck && !m.captured && !m.isPromotion) {
+            const reduction = 1;
+            s = -negamax(board, depth - 1 - reduction, -alpha - 1, -alpha, getOpponentColor(color));
+
+            // Re-search at full depth if LMR failed to prove this move is bad
+            if (s > alpha) {
+                s = -negamax(board, depth - 1, -beta, -alpha, getOpponentColor(color));
+            }
+        } else {
+            s = -negamax(board, depth - 1, -beta, -alpha, getOpponentColor(color));
         }
 
-        return best;
+        board.undoMove(m);
+        if (SEARCH_STATS.stop) return 0;
+
+        if (s > best) {
+            best = s;
+            bestM = m;
+        }
+        alpha = Math.max(alpha, best);
+        if (alpha >= beta) break;
     }
+
+    let type = (best <= originalAlpha) ? EntryType.ALPHA : (best >= beta ? EntryType.BETA : EntryType.EXACT);
+    tt.store(h, depth, best, type, bestM);
+    return best;
 }
 
-function getPSTValue(piece, row, col) {
-    const table = PST.get(piece.constructor);
-    if (!table) return 0;
+function quiescence(board, alpha, beta, color) {
+    SEARCH_STATS.nodes++;
+    let standPat = board.evaluateBoard(color);
+    if (standPat >= beta) return beta;
+    if (alpha < standPat) alpha = standPat;
 
-    // White uses table as-is
-    if (piece.color === PlayerColor.WHITE) {
-        return table[row][col];
+    const moves = board.getCaptures(color);
+    orderMoves(moves, board);
+
+    const opponent = getOpponentColor(color);
+    for (const move of moves) {
+        board.makeMove(move);
+        const score = -quiescence(board, -beta, -alpha, opponent);
+        board.undoMove(move);
+
+        if (SEARCH_STATS.stop) return 0;
+        if (score >= beta) return beta;
+        if (score > alpha) alpha = score;
     }
-
-    // Black is mirrored vertically
-    return table[7 - row][col];
+    return alpha;
 }
 
-function scoreMove(move, board, color) {
-    let score = 0;
-
-    const attacker = board.boardArr[move.fromRow][move.fromCol];
-    const victim = move.captured;
-
-    // 1. Captures — MVV LVA (Most Valuable Victim, Least Valuable Attacker)
-    if (victim) {
-        const victimValue = PIECE_VALUE.get(victim.constructor);
-        const attackerValue = PIECE_VALUE.get(attacker.constructor);
-        score += 10 * victimValue - attackerValue;
+function orderMoves(moves, board, ttM = null) {
+    for (const m of moves) {
+        if (ttM && m.fromRow === ttM.fromRow && m.fromCol === ttM.fromCol && m.toRow === ttM.toRow && m.toCol === ttM.toCol) m._sortScore = 1000000;
+        else m._sortScore = scoreMove(m, board);
     }
-
-    // 2. Promotion
-    if (move.isPromotion) {
-        score += 9000;
-    }
-
-    // 3. Check (very powerful for pruning)
-    if (board.isKingInCheck(color)) {
-        score += 500;
-    }
-
-    // 4. PST improvement for quiet moves
-    const fromPST = getPSTValue(attacker, move.fromRow, move.fromCol);
-    const toPST = getPSTValue(attacker, move.toRow, move.toCol);
-    score += (toPST - fromPST);
-
-    return score;
+    moves.sort((a, b) => b._sortScore - a._sortScore);
 }
 
-// Export for testing
+function scoreMove(m, b) {
+    const a = b.boardArr[m.fromRow][m.fromCol];
+    if (!a) return 0;
+    let s = m.captured ? 10 * (PIECE_VALUE.get(m.captured.constructor) || 0) - (PIECE_VALUE.get(a.constructor) || 0) : 0;
+    if (m.isPromotion) s += 9000;
+    const table = PST.get(a.constructor);
+    if (table) {
+        const fv = a.color === PlayerColor.WHITE ? table[m.fromRow][m.fromCol] : table[7 - m.fromRow][m.fromCol];
+        const tv = a.color === PlayerColor.WHITE ? table[m.toRow][m.toCol] : table[7 - m.toRow][m.toCol];
+        s += (tv - fv);
+    }
+    return s;
+}
+
+function getOpponentColor(c) { return c === PlayerColor.WHITE ? PlayerColor.BLACK : PlayerColor.WHITE; }
+
+class Zobrist {
+    constructor() {
+        this.pieceKeys = Array.from({ length: 2 }, () => Array.from({ length: 6 }, () => Array.from({ length: 64 }, () => 0n)));
+        this.castlingKeys = new Array(16).fill(0n);
+        this.enPassantKeys = new Array(8).fill(0n);
+        this.sideKey = 0n;
+        this.initKeys();
+    }
+    initKeys() {
+        const r = () => BigInt(Math.floor(Math.random() * 0xFFFFFFFF)) << 32n | BigInt(Math.floor(Math.random() * 0xFFFFFFFF));
+        for (let c = 0; c < 2; c++) for (let p = 0; p < 6; p++) for (let s = 0; s < 64; s++) this.pieceKeys[c][p][s] = r();
+        for (let i = 0; i < 16; i++) this.castlingKeys[i] = r();
+        for (let f = 0; f < 8; f++) this.enPassantKeys[f] = r();
+        this.sideKey = r();
+    }
+    computeHash(b, ctm) {
+        let h = 0n;
+        for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
+            const p = b.boardArr[r][c];
+            if (p) h ^= this.pieceKeys[p.color === PlayerColor.WHITE ? 0 : 1][p.type][r * 8 + c];
+        }
+        if (ctm === PlayerColor.BLACK) h ^= this.sideKey;
+        h ^= this.castlingKeys[this.getCastlingMask(b)];
+        if (b.enPassantTargetSquare) h ^= this.enPassantKeys[b.enPassantTargetSquare.col];
+        return h;
+    }
+    getCastlingMask(b) {
+        let m = 0;
+        if (b.whiteKing && !b.whiteKing.hasMoved) {
+            const r1 = b.boardArr[7][7], r2 = b.boardArr[7][0];
+            if (r1 && r1 instanceof Rook && !r1.hasMoved) m |= 1;
+            if (r2 && r2 instanceof Rook && !r2.hasMoved) m |= 2;
+        }
+        if (b.blackKing && !b.blackKing.hasMoved) {
+            const r1 = b.boardArr[0][7], r2 = b.boardArr[0][0];
+            if (r1 && r1 instanceof Rook && !r1.hasMoved) m |= 4;
+            if (r2 && r2 instanceof Rook && !r2.hasMoved) m |= 8;
+        }
+        return m;
+    }
+}
+const zobrist = new Zobrist();
+const EntryType = { EXACT: 0, ALPHA: 1, BETA: 2 };
+class TranspositionTable {
+    constructor(s = 65536) { this.size = s; this.table = new Array(s).fill(null); }
+    getIndex(h) { let i = Number(h % BigInt(this.size)); return i < 0 ? i + this.size : i; }
+    store(h, d, s, t, m) { const i = this.getIndex(h); if (!this.table[i] || this.table[i].depth <= d) this.table[i] = { hash: h, depth: d, score: s, type: t, bestMove: m }; }
+    lookup(h, d, a, b) {
+        const e = this.table[this.getIndex(h)];
+        if (e && e.hash === h && e.depth >= d) {
+            if (e.type === EntryType.EXACT) return e.score;
+            if (e.type === EntryType.ALPHA && e.score <= a) return e.score;
+            if (e.type === EntryType.BETA && e.score >= b) return e.score;
+        }
+        return null;
+    }
+    getBestMove(h) { const e = this.table[this.getIndex(h)]; return (e && e.hash === h) ? e.bestMove : null; }
+    clear() { this.table.fill(null); }
+}
+const tt = new TranspositionTable(131072);
+
 module.exports = {
-    PlayerColor,
-    GameState,
-    Move,
-    Piece,
-    King,
-    WhiteKing,
-    BlackKing,
-    Queen,
-    WhiteQueen,
-    BlackQueen,
-    Rook,
-    WhiteRook,
-    BlackRook,
-    Bishop,
-    WhiteBishop,
-    BlackBishop,
-    Knight,
-    WhiteKnight,
-    BlackKnight,
-    Pawn,
-    WhitePawn,
-    BlackPawn,
-    Board,
-    KNIGHT_OFFSETS,
-    KING_OFFSETS,
-    ROOK_DIRS,
-    BISHOP_DIRS,
-    PromotionType,
-    findBestMove,
-    minimax,
-    scoreMove,
-    evaluateBoard: Board.prototype.evaluateBoard // Optional expose if needed, but it's on Board prototype
+    PlayerColor, GameState, Move, Piece, King, WhiteKing, BlackKing, Queen, WhiteQueen, BlackQueen, Rook, WhiteRook, BlackRook, Bishop, WhiteBishop, BlackBishop, Knight, WhiteKnight, BlackKnight, Pawn, WhitePawn, BlackPawn, Board, KNIGHT_OFFSETS, KING_OFFSETS, ROOK_DIRS, BISHOP_DIRS, PromotionType, PieceType, CHECKMATE_SCORE, findBestMove, negamax, scoreMove, orderMoves, getOpponentColor, zobrist, Zobrist, tt, TranspositionTable, EntryType, quiescence,
 };
