@@ -7,6 +7,8 @@ class Board {
         this.whiteKing = null
         this.legalMovesForAPieceCache = new Map();
         this.enPassantTargetSquare = null
+        this.lastMove = null;
+        this.checkedKing = null;
     }
 
     placePiece(piece) {
@@ -116,6 +118,14 @@ class Board {
 
     evaluateGameState(color) {
         const isKingInCheck = this.isKingInCheck(color);
+
+        if (isKingInCheck) {
+            const king = color === PlayerColor.WHITE ? this.whiteKing : this.blackKing;
+            this.checkedKing = { row: king.row, col: king.col };
+        } else {
+            this.checkedKing = null;
+        }
+
         let legalMoves = this.getLegalMoves(color);
         if (this.#isStaleMate(isKingInCheck, legalMoves)) {
             return GameState.STALEMATE;
@@ -447,8 +457,8 @@ const PIECE_VALUE = new Map([
 ]);
 
 const PST = new Map([
-    [WhitePawn,   PST_TABLES["PAWN"]],
-    [BlackPawn,   PST_TABLES["PAWN"]],
+    [WhitePawn, PST_TABLES["PAWN"]],
+    [BlackPawn, PST_TABLES["PAWN"]],
 
     [WhiteKnight, PST_TABLES["KNIGHT"]],
     [BlackKnight, PST_TABLES["KNIGHT"]],
@@ -456,12 +466,12 @@ const PST = new Map([
     [WhiteBishop, PST_TABLES["BISHOP"]],
     [BlackBishop, PST_TABLES["BISHOP"]],
 
-    [WhiteRook,   PST_TABLES["ROOK"]],
-    [BlackRook,   PST_TABLES["ROOK"]],
+    [WhiteRook, PST_TABLES["ROOK"]],
+    [BlackRook, PST_TABLES["ROOK"]],
 
-    [WhiteQueen,  PST_TABLES["QUEEN"]],
-    [BlackQueen,  PST_TABLES["QUEEN"]],
+    [WhiteQueen, PST_TABLES["QUEEN"]],
+    [BlackQueen, PST_TABLES["QUEEN"]],
 
-    [WhiteKing,   PST_TABLES["KING"]],
-    [BlackKing,   PST_TABLES["KING"]],
+    [WhiteKing, PST_TABLES["KING"]],
+    [BlackKing, PST_TABLES["KING"]],
 ]);

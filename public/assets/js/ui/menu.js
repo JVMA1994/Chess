@@ -17,7 +17,7 @@ class Menu {
  * Defines necessary methods and types for main menu
  */
 class MainMenu extends Menu {
-    #buttons = [{text: "2 Player", w: 220, h: 60}];
+    #buttons = [{ text: "2 Player", w: 220, h: 60 }];
 
     constructor(game) {
         super();
@@ -65,7 +65,7 @@ class MainMenu extends Menu {
     }
 
     handleMouseMove(e) {
-        const {mx, my} = this.getMouse(e);
+        const { mx, my } = this.getMouse(e);
         this.hoveredButton = null;
 
         for (const btn of this.#buttons) {
@@ -85,7 +85,7 @@ class MainMenu extends Menu {
 }
 
 class ResetMenu extends Menu {
-    #buttons = [{text: "Resume", w: 160, h: 50, action: "resume"}, {
+    #buttons = [{ text: "Resume", w: 160, h: 50, action: "resume" }, {
         text: "Reset Game",
         w: 160,
         h: 50,
@@ -146,7 +146,7 @@ class ResetMenu extends Menu {
     }
 
     handleMouseMove(e) {
-        const {mx, my} = this.getMouse(e);
+        const { mx, my } = this.getMouse(e);
         this.hoveredButton = null;
 
         for (const btn of this.#buttons) {
@@ -171,7 +171,7 @@ class ResetMenu extends Menu {
 }
 
 class PromotionMenu extends Menu {
-    constructor({game, pawn}) {
+    constructor({ game, pawn }) {
         super();
         this.game = game;
         this.pawn = pawn;
@@ -187,8 +187,8 @@ class PromotionMenu extends Menu {
     }
 
     handleClick(e) {
-        const {mx, my} = this.getMouse(e)
-        const {row, col} = this.#getBoardCoordinatesFromXY(mx, my);
+        const { mx, my } = this.getMouse(e)
+        const { row, col } = this.#getBoardCoordinatesFromXY(mx, my);
         const index = col - this.#baseCol();
 
         if (index < 0 || index > 3 || row !== this.row) return;
@@ -201,8 +201,8 @@ class PromotionMenu extends Menu {
     handleMouseMove(e) {
         this.draw();
 
-        const {mx, my} = this.getMouse(e);
-        const {row, col} = this.#getBoardCoordinatesFromXY(mx, my);
+        const { mx, my } = this.getMouse(e);
+        const { row, col } = this.#getBoardCoordinatesFromXY(mx, my);
         const x = BOARD_X + col * SQUARE_SIZE;
         const y = BOARD_Y + row * SQUARE_SIZE;
         const index = col - this.#baseCol();

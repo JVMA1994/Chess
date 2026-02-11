@@ -74,8 +74,14 @@ class Game extends EventEmitter {
         if (this.phase === GameState.BLACK_TURN) {
             setTimeout(() => {
                 const bestMove = findBestMove(this.board, PlayerColor.BLACK, 4);
-                const piece = this.board.boardArr[bestMove.fromRow][bestMove.fromCol];
-                this.#executeLegalMove(bestMove, piece);
+                if (bestMove) {
+                    const piece = this.board.boardArr[bestMove.fromRow][bestMove.fromCol];
+                    this.#executeLegalMove(bestMove, piece);
+                } else {
+                    // Checkmate or Stalemate should have been caught, but safe fallback
+                    const gameState = this.board.evaluateGameState(PlayerColor.BLACK);
+                    if (gameState !== GameState.CONTINUE) this.#handleGameEnd(gameState);
+                }
             }, 200);
         }
     }
@@ -92,8 +98,8 @@ class Game extends EventEmitter {
      * @param {MouseEvent} e - Mouse down event
      */
     handleMouseDown(e) {
-        const {mx, my} = this.#getMousePosition(e);
-        const {row, col} = this.#getBoardCoordinatesFromXY(mx, my);
+        const { mx, my } = this.#getMousePosition(e);
+        const { row, col } = this.#getBoardCoordinatesFromXY(mx, my);
         const piece = this.board.boardArr[row][col];
 
         if (!piece || !this.#isPlayersTurn(piece)) return;
@@ -116,7 +122,7 @@ class Game extends EventEmitter {
     handleMouseMove(e) {
         if (!this.draggedPiece) return;
 
-        const {mx, my} = this.#getMousePosition(e);
+        const { mx, my } = this.#getMousePosition(e);
 
         const legalMoves = this.board.getCachedMoves(this.draggedPiece);
 
@@ -133,7 +139,7 @@ class Game extends EventEmitter {
         if (!this.draggedPiece) return;
 
         const piece = this.draggedPiece;
-        const {row, col} = this.#getBoardCoordinatesFromEvent(e);
+        const { row, col } = this.#getBoardCoordinatesFromEvent(e);
 
         // Handle drops outside the board
         if (!this.#isInsideBoard(row, col)) {
@@ -156,6 +162,7 @@ class Game extends EventEmitter {
         this.activeMenu = null;
         const promotedPiece = this.#createPromotedPiece(selectedType, promotingPawn.color, promotingPawn.row, promotingPawn.col);
         this.board.placePiece(promotedPiece);
+
         const gameState = this.board.evaluateGameState(this.#getOpponentColor(promotingPawn.color));
         if (gameState === GameState.CONTINUE) {
             this.switchTurn();
@@ -167,7 +174,11 @@ class Game extends EventEmitter {
 
     #executeLegalMove(move, piece) {
         this.board.makeMove(move);
-        this.#resetPiecePosition(piece);
+        // Track last move
+        this.board.lastMove = {
+            from: { row: move.fromRow, col: move.fromCol },
+            to: { row: move.toRow, col: move.toCol }
+        };
         this.board.evictLegalMovesCache();
 
         if (move.isPromotion) {
@@ -186,6 +197,7 @@ class Game extends EventEmitter {
         const gameState = this.board.evaluateGameState(
             this.#getOpponentColor(piece.color)
         );
+        this.#resetPiecePosition(piece);
 
         if (gameState === GameState.CONTINUE) {
             this.switchTurn();
@@ -235,7 +247,7 @@ class Game extends EventEmitter {
      * @returns {{row: number, col: number}}
      */
     #getBoardCoordinatesFromEvent(e) {
-        const {mx, my} = this.#getMousePosition(e);
+        const { mx, my } = this.#getMousePosition(e);
         return {
             col: Math.floor((mx - BOARD_X) / SQUARE_SIZE),
             row: Math.floor((my - BOARD_Y) / SQUARE_SIZE)
