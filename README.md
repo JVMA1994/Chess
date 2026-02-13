@@ -66,4 +66,4 @@ A robust, JavaScript-based Chess engine featuring a custom AI, complete rules im
 *   **Transposition Table**: Fully integrate the implemented TT into the search to handle transpositions.
 *   **Quiescence Search**: Fix horizon effects by searching dynamic capture chains at depth limits.
 *   **Iterative Deepening**: Implement time management for the AI.
-*   **Fix**: Promotion logic for AI.
+*   **Fix**: Promotion logic for AI. 4 piece promotion to be supported.
